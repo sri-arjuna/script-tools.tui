@@ -80,8 +80,6 @@
 	if [[ ! -z $1 ]]
 	then	parseargs $@
 	else	sH "$@"
+		tui-title ""
 		sMenu "$ST_MENU_DIR"
 	fi
-echo
-sea_select a b c
-press
