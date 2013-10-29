@@ -1,0 +1,34 @@
+#!/bin/bash
+#
+#	Desription:	Select a module to edit
+#	Lisence:        GPL v3
+#	Author:         sea ; < erat DOT simon æ gmail D0T com >
+#	Created:	2013.07.21
+#	Changed:	2013.08.06
+	script_version=0.2
+#
+#	Title
+#
+	title="sea's Script-Tool Configuration for other files"
+	sT "$title ($script_version)"
+#
+#	Variables
+#
+	shown=no
+#
+#	Display
+#
+	[ ! -z $4 ] && tmp="$4" && \
+		[ ! "mod" = "${${tmp:0:3},,}" ] && \
+		[ ! "sys" = "${tmp:0:3}" ] && \
+		[ -f "$SEA_LIB_DIR/$4" ] && sEdit "$SEA_LIB_DIR/$4" && return $?
+	[ "" = "$(echo $list)" ] && \
+		ReportStatus 1 "No other files to change" && \
+		return 1
+	sE "Please select a file to edit:"
+	select tFile in Back $list;do
+		[ Back = $tFile ] && return 6
+		sEdit "$SEA_LIB_DIR/$tFile"
+		[ ! $shown = no ] && sE "Please select a file to edit:"
+		shown=yes
+	done

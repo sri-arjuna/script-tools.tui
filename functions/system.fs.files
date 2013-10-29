@@ -1,0 +1,92 @@
+
+#
+#	Desription:	A simple handler for customable configuration files
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea), erat.simon æ gmail.com
+#	Release Date:   2013.02.11
+#	Changed Date:	2013.02.11
+#	File Version:	0.1
+#
+#	Title
+#
+	#sT "BETA: Script-Tools Configuration ($script_version)"
+#
+#	Variables
+#
+	
+#
+#	Subs
+#
+	ReadiniLine() { # $retrieved_line
+	# BETA: Reads the line and splits it into variable and value
+	# Returns the two string
+		[ "" = "$1" ] || [ ! "" = "$2"  ]  && sE "Parse the line as one string!" && return 1
+		tmp=$ST_CACHE_DIR/readini
+		CheckPath $ST_CACHE_DIR > /dev/zero
+		
+		echo $1 > $tmp
+		sed s/"="/" "/g -i $tmp
+		cat $tmp		
+	}
+	GetRandomFile() { # [-v] PATH 
+	# Lists all files of supplied folder and returns a random file name
+	# Use -v for verbose mode
+	#
+	#	Variables
+	#
+		#files[]=""
+		isVerbose=false
+		path=""
+		count=0
+		rnd=0
+		for arg in ${@}
+		do	if [ $arg = "-v" ] || [ $arg = "--v" ] 
+			then	isVerbose=true
+			elif [ -d "$arg" ]
+			then	path="$arg"
+			else	sE "Fatal error" "$FAILURE"
+				return 1
+			fi
+		done
+		
+		
+		if [ "" = "$path" ]
+		then	sE "Usage: $0 /path/to/files" "$FAILURE" && \
+			return 1
+		else	[ "$isVerbose" = true ] && sE "Scanning directory: $path" "$SUCCESS"
+		fi
+		
+		newlist=""
+		
+		cat > $ST_CACHE_DIR/list << EOF
+$(ls $1)
+EOF
+		
+		
+		while read file;do
+		#[ ! "" = "$file" ] && echo -e "---\n---\t$file\n----\n----"
+			if [ -f "$1/$file" ] && [ ! -d "$1/$file" ]
+			then	files[$count]="$file" 
+				((count++))
+				[ "$isVerbose" = true ] && sP "Added file: $file ($[ $count - 1 ])" "$PROGRESS"
+			fi
+		done<$ST_CACHE_DIR/list
+		
+		rnd=$(rnd $count ) || return 1
+		
+		[ "$isVerbose" = true ] && \
+			sE "Found files: $count" "$SUCCESS" && \
+			sE "Retrieved random number: $rnd" "$SUCCESS"
+		
+		rndfile="${files[$rnd]}" || return 1
+		[ -f "$path/$rndfile" ] && \
+			( [ "$isVerbose" = true ] && sE "Selected file: $path/$rndfile" "$SUCCESS" || echo $path/$rndfile ) || \
+				GetRandomFile $path $( [ true = "$isVerbose" ] && echo "-v")
+				#
+				# I am aware of the loop !
+				# That is to avoid the returning of the path instead of a file
+				#
+				#sE "Could not verify file: $path/$rndfile"
+				
+		[ 0 -eq $? ] && return 0 || return 1		
+	}

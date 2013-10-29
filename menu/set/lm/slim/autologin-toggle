@@ -1,0 +1,38 @@
+#!/bin/bash
+# ------------------------------------------------------------------------------
+# | sea's Script Tools: The 3rd Generation
+# | File Description:	Handle Login Manager things - SLIM
+	script_version=0.2
+# | Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+# | Created (y.m.d):    2012.05.30
+# | Changed:            2012.06.02
+# | License:            GPL v3
+# | Modified By:        
+# | Resource:           
+# | Special Thanks: 
+# ------------------------------------------------------------------------------
+# | Title
+	sT "Slim : Toggle autologin ($script_version)"
+# |
+# | Vars
+	slim_conf=/etc/slim.conf
+	search_term="auto_login"
+	status=$(grep "$search_term" $slim_conf)
+# | One liners
+	
+# |
+# | Display
+	sP "Togge autologin for slim..." "$PROGRESS"
+
+	if [ "${status:0:1}" = "#" ]
+	then	SF="# $search_term"
+			RW="$search_term"
+			go="enabled"
+	else	SF="$search_term"
+			RW="# $search_term"
+			go="disabled"
+	fi
+
+	sed -i s/"$SF"/"$RW"/g $slim_conf && \
+		sE "Successfully $go autologin" "$SUCCESS" ||\
+		sE "Could not toggle autologin." "$FAILURE"

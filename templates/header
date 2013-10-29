@@ -1,0 +1,101 @@
+#	Resource:	
+# 
+# 
+#	Script tools compatibility
+#
+	if [ ! -f /usr/share/script-tools/st.cfg ]
+	then	clear ; clear
+		shopt -s expand_aliases
+		alias sT="echo -e '\n\n\t\t'"
+		alias sP="printf '\r'"
+		alias sE="echo"
+		alias sInst="sudo yum install -y"	# This is very limited as main audience is redhat based
+		DONE="[ DONE ]"
+		FAIL="[ FAIL ]"
+		WORK="[ WORK ]"
+		ReportStatus() { [ $1 -eq 0 ] && echo "$DONE  $2" ; [ $1 -eq 1 ] && echo "$FAIL  $2" ; [ $1 -eq 3 ] && sP "$WORK  $2" ; return $1 ; }
+		ask() { echo;echo;read -n1 -p "$1 (y/n)" answer ; [ [joys] = $answer ] && retvalue=0 || retvalue=1 ; printf "\n";return $retvalue; }
+		input() { echo;echo;read -p "$1 " input ; echo "$input" ; }
+		press() { read -p "Press [ ENTER ] to continue..." buffer ; }
+		sEdit() { for editor in gedit kedit nano vim vi ed;do $editor "$1" && return 0;done;return 1;}
+	else	[ -z $stDir ] && source /usr/share/script-tools/st.cfg
+	fi
+#
+#	Title
+#
+	title="YOURNAME's XY"
+	sT "$title ($script_version)"
+#	
+#	Variables
+#
+	retval=99
+	needHelp=false
+	thisConfig=
+	thisHelp="FILENAME ($script_version)
+		\rỤsage: FILENAME [options]
+		\r\t-h\tDisplays this screen
+		\r\t-XY\t
+		
+		\rExit Status
+		\r\t0 \tOK
+		\r\t1 \tFailed
+		"
+	requires=""	# Enter the requirement here
+	required=""	# This is a worklist of the script
+#
+#	Verify Requirements
+#
+	for app in $(echo $requires;do isInstalled $app || required+=" $app";done
+	if [ ! "" = "$(echo $required)" ] 
+	then	sP "Installing $required" "$WORK"
+		sInst $required
+		ReportStatus $? "Installed $required"
+	fi
+#
+#	Write default config file or source it
+#
+	if [ -f "$SEA_LIB_DIR/$thisConfig" ] # && [ -z $4 ]
+	then	#source "$SEA_LIB_DIR/$thisConfig"			# Old
+		#newLM="$DEFAULT_LOGIN_MANAGER"				# Old
+		tmp_val="$(ConfigGet $thisConfig VARIABLE_NAME)"	# New (this will look for VARIABLE_NAME
+		ReportStatus $? "Configuration loaded"			#   in $thisConfig and return the value after =)
+	elif [ ! -f "$SEA_LIB_DIR/$thisConfig" ] && [ ! -d "$SEA_LIB_DIR/$thisConfig"
+	then	if ask "Create a default option?"
+		then	tmp_val=$(input "Question? ")
+			ConfigSet "$thisConfig" VARIABLE_NAME"$tmp_val"			# New
+			#echo -e "DEFAULT_LOGIN_MANAGER=$tmp_val" > "$SEA_LIB_DIR/$thisConfig" 	# Old
+			ReportStatus $? "Configuration saved"
+		else	#echo -e "DEFAULT_LOGIN_MANAGER=" > "$SEA_LIB_DIR/$thisConfig" 		# Old
+			ConfigSet "$thisConfig" VARIABLE_NAME "\"\""			# New
+			ReportStatus $? "Written empty default"
+		fi
+	fi
+#
+#	Check for argument
+#
+	if [ ! -z "$1" ]; then
+		for arg in $@;do
+			case $arg in
+			# Help arguments
+			-\?|--\?|-h|-help|--h|--help)
+				needHelp=true	;;
+			# Place your arguments here
+			*)	mode=${arg:1}	;;
+			esac
+		done
+	fi
+#	
+#	Subs
+#
+	
+#
+#	Handle Arguments
+#
+	#[ ! 0 -eq $UID ] && ReportStatus 1 "This script requires root rights." && exit 1
+	#[ -z "$1" ] && echo -e "$thisHelp" && exit $retval
+	[ $needHelp = true ] && echo -e "$thisHelp" && exit $retval
+	
+#	
+#	Display
+#
+	

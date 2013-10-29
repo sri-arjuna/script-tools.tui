@@ -1,0 +1,37 @@
+
+# ------------------------------------------------------------------------------
+#	sea's Script Tools: The 3rd Generation
+#	Version:	0.1
+#	Author:		Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created:	2012.04.10
+#	Changed:	2013.06.05
+#	License:	GPL v3
+# ------------------------------------------------------------------------------
+#	Title
+#	Ansi Graphic Colorsheme
+#
+	ANSI_INFO() { # Available Codes: black, white, green, cyan, red, blue, yellow, purple 
+	# Example: use blackb for a black background, or blackf for black font..
+	# Example: \${blueb}\${whitef}TEXT\${reset}
+	echo
+	}
+	esc=""		 #	 \033	   # #0018 oder #001B
+	esc="\033"
+	
+#	 --------------------	--------------------	---------------------   --------------------
+	blackf="${esc}[30m";	whitef="${esc}[37m";	greenf="${esc}[32m";	cyanf="${esc}[36m";		  #	30, 37, 32, 36 +
+	redf="${esc}[31m";	  bluef="${esc}[34m";	 yellowf="${esc}[33m";   purplef="${esc}[35m";		#	31, 34, 33, 35 = 30-37
+	greyf="${esc}[38m";
+#	 --------------------	--------------------	---------------------   --------------------
+	blackb="${esc}[40m";	whiteb="${esc}[47m";	greenb="${esc}[42m";	cyanb="${esc}[46m";		  #	40, 47, 42, 46 +
+	redb="${esc}[41m";	  blueb="${esc}[44m";	 yellowb="${esc}[43m";   purpleb="${esc}[45m";		#	41, 44, 43, 45 = 40-47
+	greyb="${esc}[48m";
+#	 --------------------	--------------------	---------------------   --------------------
+	reset="${esc}[0m"
+	
+#	
+#	Sea Script tool collection
+#---------------------------
+#	Vars
+	seacolor=${blueb}${whitef}
+	seatitle=${whiteb}${bluef}

@@ -1,0 +1,28 @@
+#!/bin/bash
+#
+#	Desription:	Select a module to edit
+#	Lisence:        GPL v3
+#	Author:         sea ; < erat DOT simon æ gmail D0T com >
+#	Created:	2013.07.21
+#	Changed:	2013.08.06
+	script_version=0.2
+#
+#	Title
+#
+	title="sea's Script-Tool Configuration : Modules"
+	sT "$title ($script_version)"
+#
+#	Variables
+#
+	shown=no
+#
+#	Display
+#
+	[ ! -z $4 ] && [ -f "$SEA_LIB_DIR/module.$4" ] && sEdit "$SEA_LIB_DIR/module.$4" && return $?
+	sE "Please select a module to edit:"
+	select tFile in Back $(ls "$SEA_LIB_DIR"|grep ^mod);do
+		[ Back = $tFile ] && return 6
+		sEdit "$SEA_LIB_DIR/$tFile"
+		[ ! $shown = no ] && sE "Please select a file to edit:"
+		shown=yes
+	done

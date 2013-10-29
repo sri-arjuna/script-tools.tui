@@ -1,0 +1,72 @@
+#!/bin/bash
+#
+#	Description:	Checks if the provided file is of zero length
+#	Script name:	isEmpty
+#	Lisence:        GPL v3
+#	Idea:		eaglelinux 
+#	Author:         Simon A. Erat (sea), erat . simon æ gmail . com
+#	Source:		http://www.forums.fedoraforum.org/showthread.php?p=1645928
+#	Release Date:   2013.04.10
+#	Changed Date:	2013.04.10
+    	script_version=0.3
+#
+#	Init variables
+#
+	createEmpty=false
+	needHelp=false
+	thisFile=""
+	retval=99
+	isEmptyHelp="$(basename $0) ($script_version)
+		\rỤsage: isEmpty [-h] [-ce] /path/to/file [file2 ../file3 \$HOME/../file4 ...]
+		\r\t-h\tDisplays this screen
+		\r\t-ce\tCreates an empty file if none exists
+		\rReturns (from the last displayed):
+		\r\t0 \tempty
+		\r\t1 \tnon-empty
+		\r\t2 \tfile missing
+		\r\t99 \thelp screen\n"
+#
+#	Check for argument
+#
+	for arg in $@;do
+		[ "-ce" = "$arg" ] && createEmpty=true
+		# Diffrent help options
+		[ "-h" = "$arg" ] && needHelp=true
+		[ "--h" = "$arg" ] && needHelp=true
+		[ "-help" = "$arg" ] && needHelp=true
+		[ "--help" = "$arg" ] && needHelp=true
+		[ "-?" = "$arg" ] && needHelp=true
+		[ "--?" = "$arg" ] && needHelp=true
+		[ "?" = "$arg" ] && needHelp=true
+	done
+#
+#	Check for help
+#
+	[ $needHelp = true ] && echo -e "$isEmptyHelp" && exit $retval
+	[ -z "$1" ] && echo -e "$isEmptyHelp" && exit $retval
+#
+#	Action
+#
+	for thisFile in $@;do
+	#
+	#	Create empty file?
+	#
+		[ $createEmpty = true ] && \
+			[ ! -f "$thisFile" ] && \
+			[ ! "-ce" = "$thisFile" ] && \
+			[ ! "-h" = "$thisFile" ] && \
+			touch "$thisFile"
+	#
+	#	Check for filesize
+	#
+		if [ ! -f "$thisFile" ] && [ ! "-ce" = "$thisFile" ]
+		then	echo -e "file missing \t $thisFile" 
+			retval=2
+		elif [ -s "$thisFile" ]
+		then	[ ! "-ce" = "$thisFile" ] && echo -e "no filled \t $thisFile"
+			retval=1
+		else	[ ! "-ce" = "$thisFile" ] && echo -e "yes empty \t $thisFile"
+			retval=0
+		fi
+	done
+	exit $retval

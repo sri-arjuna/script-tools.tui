@@ -1,0 +1,2 @@
+If you are accessing this script from a live media, be sure to have chrooted the proper mount.
+On common anaconda installations that is usualy: /mnt/sysimage

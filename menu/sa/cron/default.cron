@@ -1,0 +1,91 @@
+#!/bin/bash
+#
+# 	sea Script Collection : Setup
+# 	Description:	Handles cron jobs
+	script_version=0.3
+#	Lisence:	GPL v3
+#	Author: 	Simon A. Erat (sea) ; erat DOT simon æ gmail DOT com
+# 	Created:	2012.01.07
+# 	Changed:	2013.05.30
+#
+#
+#	Title
+#
+	[ -z $stDir ] && source /usr/share/script-tools/st.cfg
+	sT " sea's Cron Job Handler ($script_version)"
+#
+#	Variables
+#
+	mode=menu
+	retval=99
+	needHelp=false
+	thisHelp="st sa cron ($script_version)
+		\rỤsage: cron [options] 
+		\r\t-h\t\tDisplays this screen
+		\r\tlist|-l\t\tLists cronjobs for executing user
+		\r\tadd|-a|-n|new\tAdd a new cronjob with a little help
+		\r\tremove|-r|-rm\tRemove an existing cronjob
+		
+		\rExit Status (from the last displayed):
+		\r\t0 \tOK
+		\r\t1 \tBAD
+		\r\t99 \thelp screen\n"
+	thisConfig="$SEA_LIB_DIR/module.cron.files"
+	CheckPath "$(dirname $thisConfig)" > /dev/zero
+	
+	if [ ! -f "$thisConfig" ]
+	then	touch "$thisConfig" > /dev/zero
+		echo -e "#!/bin/bash
+CRON_Tempfile=\"$CRON_Tempfile\"
+CRON_Current=\"$CRON_Current\"" > $thisConfig
+	fi
+	source "$thisConfig"
+#
+#	Check for argument
+#
+	for arg in $@
+	do	case $arg in
+		# Script options
+		"-l"|"list"|"-s"| "show")
+					mode="list"	;;
+		"-n"|"-a"|"add"| "new")	mode="add"	;;
+		"-r"|"remove"| "-rm")	mode="remove"	;;
+		# Help options
+		"-h"| "--h"|"-help"|"--help"| "help")
+					needHelp=true	;;
+		"-?"|"\?"| "--\?")	needHelp=true	;;
+		isHelpy)		needHelp=true	;;
+		esac
+		[ "-h" = "$arg" ] && needHelp=true
+		[ "-?" = "$arg" ] && needHelp=true
+	done
+#
+#	One Liners
+#
+	[ true = $needHelp ] && echo -e "$thisHelp" && exit $retval
+#
+#	Display
+#
+	case $mode in 
+	list)	CRON_List
+		return $?	;;
+	add)	CRON_New
+		return $?	;;
+	remove)	CRON_Remove
+		return $?	;;
+	menu)	CRON_List
+		sE "Select task:"
+		select action in Back New List Remove
+		do	case $action in
+			Back)	ReportStatus 6
+				return 6	;;
+			New)	CRON_New
+				return $?	;;
+			List)	CRON_List
+				return $?	;;
+			Remove)	CRON_Remove
+				return $?	;;
+			esac
+		done
+		;;
+	esac

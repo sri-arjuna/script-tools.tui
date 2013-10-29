@@ -1,0 +1,10 @@
+#!/bin/bash
+[ "-h" = "$1" ] && echo "Come on its called: $0, what do you guess?" && exit 99
+# | Variables
+    mb=1000
+    total=$(free|grep Mem|awk '{print $2'})
+    used=$(free|grep Mem|awk '{print $3'})
+    free=$(free|grep Mem|awk '{print $4'})
+# |
+# | Output
+    echo "RAM Total: $[ $total / $mb ] MB, Used: $[ $used / $mb ] MB, Free: $[ $free / $mb ] MB"

@@ -1,0 +1,31 @@
+#!/bin/bash
+#
+#	Description:	Handles basic kickstart tasks
+#	License: 	GPL v3
+#	Date created:	2013.08.03
+#	Date changed:	2013.08.28
+#	Written by: 	Simon A. Erat, erat . simon æ gmail . com
+	script_version=0.2
+#
+#
+#	Title
+#
+	sT "sea's Kickstart Handler - Edit ($script_version)"
+#
+#	Variables
+#
+	lbl=""
+	needHelp=false
+	thisHelp="edit ($script_version)
+		\rUsage: st dev ks edit [ LABEL ]"
+#
+#	Arguments
+#
+	source $SEA_CLI_DIR/dev/prj/ks/default.shared
+	[ true = $needHelp ] && \
+		echo -e "$thisHelp" && \
+		return 111
+#
+#	Display
+#
+	KS_Prj_Edit" $lbl"

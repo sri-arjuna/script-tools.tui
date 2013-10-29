@@ -1,0 +1,293 @@
+
+#
+#	sea's Script Tools: The 3rd Generation
+#	File Description:	Handles SSH commands
+#	Author:		Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created:	2012.05.29
+#	Changed:	2013.08.28
+#	License:	GPL v3
+#	Resource:	man ssh[-keygen], https://sourceforge.net/apps/trac/sourceforge/wiki/SSH%20keys
+#
+#
+#	Title
+	
+#
+#	Subs
+	SSH_Require() { # [ LABEL ]
+	# Returns 0 if user requires a ssh-keyfile
+	#
+		[ "" = "$1" ] && sE "Please select project to verify SSH:" && lbl=$(PRJ_Select) || lbl="$1"
+		source $ST_USER_PRJ/$lbl/conf || exit 1
+		retval=0
+		this="$HOME/.ssh/id_rsa"
+		[ -f "$this" ] && \
+			[ ! -e "$this" ] && \
+			retval=1
+		return $retval
+	}
+	SSH_New() { # [ LABEL ]
+	# Pops up question to use existing keyfile or create a new one
+	#
+		[ "" = "$1" ] && lbl=$(PRJ_Select) || lbl="$1"
+		source $ST_USER_PRJ/$lbl/conf || exit 1
+		
+		sE "Select your next step:"
+		A="Create a new keyfile"
+		B="Use an existing file"
+		
+		select menu in "$A" "$B"
+		do	case "$menu" in
+			"$A")	SSH_Create $lbl
+				ReportStatus $? "Created a new custom keyfile"
+				return $?	;;
+			"$B")	sE "Select a file to use:"
+				cd ~/.ssh
+				select ssh_file in $(ls --hide=*.* --hide=author* --hide=known*);do break;done
+				cat > "$ST_USER_PRJ/$lbl/ssh" << EOF
+# sea's SSH Manager configuration for $prj_name, created with Script-Tools ($stVer)
+	ssh_name="$prj_name"
+	ssh_user="$prj_name"
+	ssh_path=""
+	ssh_adress=""
+	ssh_pw=""
+	ssh_bit=
+	ssh_comment=
+	ssh_file=""
+EOF
+	;;
+			esac
+		done
+	}
+	SSH_Create() { # [ LABEL ]
+	# Creates a new configuration file for supplied LABEL
+	#
+		[ "" = "$1" ] && lbl=$(PRJ_Select) || lbl="$1"
+		source $ST_USER_PRJ/$lbl/conf || exit 1
+		[ -f $ST_USER_PRJ/$lbl/git ] && source $ST_USER_PRJ/$lbl/git
+		mode=nonexist
+
+		ssh_name=
+		ssh_bit=
+		ssh_pw=
+		ssh_user=
+		ssh_adress=
+		
+		if ask "Use default path? ($HOME/.ssh)" 
+		then	ssh_path=$HOME/.ssh
+		else	ssh_path=$(input "Please enter the full path to .ssh: ")
+		fi
+		
+		if ask "Do you want to name the keyfile diffrent from: $prj_name" 
+		then	ssh_name="$(input 'Please type the new name: ')"
+		else	ssh_name="$prj_name"
+		fi
+		
+		if [ ! "" = "$(ls $ssh_path|grep $ssh_name)" ]
+		then	ReportStatus 0 "Key filename already in use."
+			ask "Do you want to use the existing file instead?" && \
+				mode=exist || return 1
+		fi
+		
+		if [ ! exist = $mode ]
+		then	if ask "Do you want to store a comment in the keyfile?" 
+			then	ssh_comment=$(input "Please enter the comment: ")
+			else	ssh_comment=""
+			fi
+		
+			sE "Please select the encryption strength (bit):"
+			sT "NOTE: The stronger you choose, the longer it takes..."
+			select ssh_bit in $(cat $ST_CONF_DIR/lists/CryptStrength);do break;done
+		
+			if ask "Do you want to use a password for the keyfile?" 
+			then	ssh_pw=$(input "Please enter the keyphrase: ")
+			else	ssh_pw=""
+			fi
+		else	ssh_files="$(ls $ssh_path|grep $ssh_name|grep -v pub|grep -v fileprint)"
+			ssh_comment="$(cat $ssh_path/$ssh_file| awk '{print $3}')"
+			select ssh_file in ${ssh_file};do break;done #" #:0:( - 4 )}"
+			sE "$ssh_file" "$ssh_comment"
+			exit
+		fi
+		
+		if ask "Do you connect to an external adress?"
+		then	ssh_user=$(input "Please enter your remote login name: ")
+			select dest in Cancel SF Other
+			do	case $dest in
+				Cancel)	break	;;
+				SF)	ssh_adress="shell.sourceforge.net"
+					test "" = "$prj_name" && \
+						prj_name=$(input "Please enter the UNIX project name: ")
+					ssh_adress="$ssh_user,$prj_name@$ssh_adress"
+					break	;;
+				Other)	ssh_adress=$(input "Please enter the destination host (my-remote-host.com[:88]): ")
+					ssh_adress="$ssh_user@$ssh_adress"		# later, save seperated
+					break 	;;
+				esac
+			done
+		fi
+		[ "" = "$ssh_adress" ] && ReportStatus 1 "FATAL ERROR in $0!" && return 1
+		cat > "$ST_USER_PRJ/$lbl/ssh" << EOF
+# sea's SSH Manager configuration for $lbl, created with Script-Tools $stVer
+	ssh_name=$ssh_name
+	ssh_user=$ssh_user
+	ssh_path="$ssh_path"
+	ssh_adress=$ssh_adress
+	ssh_pw="$ssh_pw"
+	ssh_bit=$ssh_bit
+	ssh_comment="$ssh_comment"
+	ssh_file="\$ssh_name-\$ssh_comment"
+EOF
+		sE "Saved file to: $ST_USER_PRJ/$lbl/ssh" "$SUCCESS"
+		return 0
+	}
+
+	SSH_Edit() { # [ LABEL ]
+	# Edit configuration file of LABEL
+	#
+		[ "" = "$1" ] && lbl=$(PRJ_Select) || lbl="$1"
+		editfile="$ST_USER_PRJ/$lbl/ssh"
+		sEdit "$editfile"
+	}
+	SSH_MakeKey() { # [ LABEL ]
+	# 
+	#
+		[ "" = "$1" ] && lbl=$(PRJ_Select) || lbl="$1"
+		source "$ST_USER_PRJ/$lbl/conf"
+		source "$ST_USER_PRJ/$lbl/ssh"
+		
+		sP "Generating arguments..." "$WORK"
+		[ "" = "$ssh_pw" ] && \
+			nopw="" || nopw=" -N $ssh_pw "
+		[ ! "" = "$ssh_comment" ] && \
+			nocom=" -C $ssh_comment " && \
+			addy=$(echo "$ssh_comment"|awk '{print $1}') || \
+			nocom="" 
+		[ ! "" = "$addy" ] && \
+			addy="-$addy" || addy=""
+		sE "Generated arguments" "$DONE"
+		
+		
+		[ -f "$ssh_path/$ssh_file" ] && \
+			ask "Delete $ssh_file?" && \
+			rm -f $ssh_path/$ssh_file
+		
+		sP "Generating a $ssh_bit bit key..." "$PROGRESS"
+		ssh-keygen  -b $ssh_bit $nopw $nocom -f $ssh_path/$ssh_file| grep ":"|grep -v "fingerprint" >> $ssh_path/$ssh_file-fingerprint && \
+			retval=0 || retval=1
+		
+		[ 0 -eq $retval ] && \
+			sE "Generated: $ssh_path/$ssh_file" "$SUCCESS" || \
+			sE "Failed writing: $ssh_path/$ssh_file" "$FAILURE"
+		[ 1 -eq $retval ] && \
+			[ ! -f "$ssh_path/$ssh_file" ] && \
+			return 1
+		
+		sT "Sourceforge shell access"
+		[ -f "$ST_USER_PRJ/$lbl/sf" ] && sE "Copy paste this public-key to https://sourceforge.net/account/ssh"
+		cat "$ssh_path/$ssh_file.pub"
+		# ssh-keygen [-q] [-o] [-b bits] -t type [-N new_passphrase] [-C comment]
+		  #	  [-f output_keyfile]
+
+	}
+	SSH_Connect() { # [ LABEL ] [ "COMMANDS AFTER WARDS" ]
+	# Should work
+	#
+		for a in $@;do
+			if [ -d $ST_USER_PRJ/$a ]
+			then	lbl="$a"
+			else 	actions="$a"
+			fi
+		done
+		[ "" = "$lbl" ] && lbl=$(PRJ_Select)
+		source $ST_USER_PRJ/$lbl/conf
+		source $ST_USER_PRJ/$lbl/ssh 
+		
+		addy=$(echo "$ssh_comment"|awk '{print $1}')
+		sP "Establishing a connection to '$prj_name'" "$PROGRESS"
+		cmd="ssh -i $ssh_path/$ssh_file -t $ssh_adress create"
+		#echo "$cmd"
+		$cmd && retval=0 || retval=1
+		ReportStatus $retval "Connected to $prj_name"
+		return $retval
+	}
+	SSH_UploadFiles() { # LABEL FILEA FILEB
+	# TODO
+	#
+		[ "" = "$1" ] && lbl=$(PRJ_Select) || lbl="$1"
+		source "$ST_USER_PRJ/$lbl/conf"
+		source "$ST_USER_PRJ/$lbl/ssh"
+		
+		if [ -f "$ST_USER_PRJ/$lbl/sf"
+		then	rempath=/home/frs/project/$prj_name
+		fi
+	}
+	
+	#
+#	Variables
+	cstrength=$(cat $ST_CONF_DIR/lists/CryptStrength)
+	cKind="dsa rsa"
+#
+#	One Liners
+	
+#
+#	Subs
+	sshkeygen() { # [PASSWORD] [FILE]
+	# Generates a ssh keyfile with the provided PASSWORD, if its empty, no password is set.
+	# If you provide a FILE, you MUST provide the PASSWORD too, if no FILE is provided, a filename will be generated from your settings.
+	# ssh-keygen handler written April 2012 by Simon A. Erat
+		sE "Select what kind of encryption you want:"
+		select cKind in $cKind;do
+			case $cKind in
+				dsa)	cBit=1024   
+						break ;;
+				rsa)	sE "Select encryption strength:"
+						select cBit in $cstrength;do break;done
+						break ;;
+			esac
+		done
+		
+		test "" = "$2" &&	   sshFile="id-$cKind-$(whoami)_$cBit" && \
+			sE "Using default file name: id-$cKind-$(whoami)_$cBit" && \
+			sshFile="$HOME/.ssh/$sshFile" || \
+			sshFile="$HOME/.ssh/$2"
+
+		test "" = "$1" && ssh-keygen -t $cKind -b $cBit -f $sshFile ||\
+			ssh-keygen -t $cKind -b $cBit -f $sshFile -N "$1"
+		cat $sshFile.pub >> $p/authorized_keys
+	}
+	createCert() { # [PRIVATE-KEY-FILE] || NOT WORKING YET
+	# Uses first argument to find the private keyfile, or scans ~/.ssh for *.pub
+	#
+		counter=0
+		privateKeys=""
+		p=~/.ssh
+		publicKeys=$(ls $p/*.pub)
+		if [[ "" = "$1" ]]
+		then	for tKey in $publicKeys; do
+					((counter++))
+					privateKeys="$privateKeys ${tKey:0:( ${#tKey} -4 ) }"
+				done
+				case $counter in
+					0)  sE "No key files found in ~/.ssh"
+						sshkeygen && return 1   ;;
+					1)  tKey=$privateKeys	   ;;
+					*)  sE "Choose the keyfile you want to work with:"
+						select tKey in $privateKeys;do break;done  ;;
+				esac
+		else	if [[ -f $p/$1 ]]
+				then	tKey="$1"
+				else	sE "Could not find keyfile:" "$1" 
+						return 1
+				fi
+		fi
+		
+		#ssh-keygen -s $tKey-cert -I $tKey $tKey.pub
+	}
+	createSSHalias() { # URL KEYNAME ssh-ALIAS
+	# Adds the alias below to \$HOME/.bashrc
+	# alias ssh-\$3="ssh \$1 -i ~/.ssh/\$2"
+		[[ -z $3 ]] && sE "Error, call: " "createSSHalias URL KEYNAME ssh-ALIAS"
+		cat >> $HOME/.bashrc << EOF
+alias ssh-$3="ssh $1 -i ~/.ssh/$2"
+EOF
+	}

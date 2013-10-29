@@ -1,0 +1,75 @@
+#!/bin/bash
+#
+#	Desription:	Handles GIT Commands - Commit
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea) ; < < erat . simon @ gmail . com >
+#	Created:	2013.08.24
+#	Changed:	2013.08.28
+	script_version=0.3
+#
+#	Title
+#
+	title="sea's GIT Handler - Commit"
+	sT "$title ($script_version)"
+#
+#	Variables
+#
+	lbl=""
+	opts=""
+	branch=""
+	args=( $(echo "$4" "$5" "$6" "$7" "$8" "$9" "$10" ))
+	for arg in "${args[@]}" ;do
+		[ ! "$SEA_DEV_DIR/" = "$SEA_DEV_DIR/$arg" ] && \
+			[ -d "$SEA_DEV_DIR/$arg" ] && \
+			lbl="$arg"
+		[ ! "" = "$(GIT_Branch_List $lbl|grep $arg 2>&1 )" ] && \
+			[ ! $lbl = $arg ] && \
+			branch="$arg"
+		case "$arg" in
+		"-h"|"-help")
+			echo -e "change ($script_version)
+				\rUsage: st dev git commit [LABEL] [BRANCH] [OPTIONS] [\"Message to commit\"]
+				\rCommits changes to repositry \$BRANCH or current by default of project LABEL
+				\rWhere these options are adding all changed files, for automatic sake:
+				\r\t-b|-branch\t\$current create new branch: \$newBranch
+				\r\t-c|-change\t\$current changing to \$newBranch
+				\r\t-d|-delete\t\$current delete \$oldBranch
+				\r\t-m|-merge\t\$current merge from \$otherBranch
+				\r\t-u|-update\t\$current code update
+				\r" && return 99
+			;;
+		"-b"|"-branch") 	opts="-branch"	;;
+		"-c"|"-change") 	opts="-change"	;;
+		"-d"|"-delete") 	opts="-delete"	;;
+		"-m"|"-merge")  	opts="-merge"	;;
+		"-u"|"-update") 	opts="-update"	;;
+		esac
+	done
+#
+#	Display
+#
+	[ "" = "$lbl" ] && \
+		sE "Please select a project to commit:" && \
+		select lbl in $(PRJ_Select);do break;done
+	source "$SEA_DEV_DIR/$lbl/conf"
+	sE "Selected project:" "$prj_name"
+	cd "$prj_path"
+	current=$(GIT_Branch_List "$lbl"|awk '{print $1}')
+	sE "Current branch:" "$current"
+	
+	if [ ! -f "$SEA_DEV_DIR/$lbl/git" ]
+	then	ask "Add a GIT module to $prj_name?" && \
+			GIT_New "$lbl"
+		return 1
+	fi
+	
+	[ ! "$arg" = "$lbl" ] && \
+		[ ! "$arg" = "$branch" ] && \
+		[ ! "$arg" = "$opts" ] && \
+		MESSAGE="$arg" 
+	
+	GIT_Commit "$lbl" $opts $branch	"$MESSAGE" # > /dev/zero
+	ReportStatus $? "Wrote commit for $prj_name:$current:$branch:$MESSAGE"
+	# Change branch if required
+	[ ! -z $6 ] && GIT_Change "$lbl" "$6"
+	cd "$OLDPWD"

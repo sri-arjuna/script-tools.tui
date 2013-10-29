@@ -1,0 +1,195 @@
+#!/bin/bash
+#
+#	Downloads multiple youtube videos from a list file
+#	Use -pl  for playlists, -s for sound or -a for all infos.
+#	Pass an URL for a single video, or dont supply an URL
+#	and fill the list file.
+#			
+	script_version=0.7
+#	License:	GPL v3
+#	Created:	2012.12.07
+#	Changed:	2013.06.01
+#	Author: 	Simon A. Erat (sea) ; < erat D0t simon æ gmail D0T com >
+#	Resource:	
+# 
+# 
+#	Script tools compatibility
+#
+	if [ ! -f /usr/share/script-tools/st.cfg ]
+	then	clear ; clear
+		shopt -s expand_aliases
+		alias sT="echo -e '\n\n\t\t'"
+		alias sP="printf '\r'"
+		alias sE="echo"
+		SUCCESS="[ DONE ]"
+		FAILURE="[ FAIL ]"
+		PROGRESS="[ WORK ]"
+		ReportStatus() { [ $1 -eq 0 ] && echo "$SUCCESS  $2" ; [ $1 -eq 1 ] && echo "$FAILURE  $2" ; [ $1 -eq 3 ] && sP "$PROGRESS  $2" ; return $1 ; }
+		ask() { echo;read -n1 -p "$1 (y/n)" answer ; [ [yjs] = $answer ] && retval=0 || retval=1 ; printf "\n";return ; }
+		input() { echo;read -p "$1 " input ; echo "$input" ; }
+		press() { read -p "Press [enter] to continue..." buffer ; }
+		sEdit() { for editor in gedit kedit nano vim vi ed;do $editor "$1" && return 0;done;return 1;}
+	else	[ -z $stDir ] && source /usr/share/script-tools/st.cfg
+	fi
+#
+#	Title
+#
+	thistitle="sea's Youtube download Script"
+	sT "$thistitle ($script_version)"
+#	
+#	Variables
+#
+	retval=99
+	sound=false
+	playlist=false
+	info=false
+	listonly=false
+	needHelp=false
+	all=false
+	thisHelp="st net yt ($script_version)
+		\rỤsage: yt [-h] [-s] [-pl] [-i] [-lvf] [URL]
+		\r\t-h\tDisplays this screen
+		\r\t-s\tDownload video and exports to audiofile
+		\r\t-pl\tDownloads every item of Playlist (Reckognize ??)
+		\r\t-i\tDownloads additional info for video.
+		\r\t-lv\tList Video Formats for URL
+		\r\t-s[0-9]\tStarts at PL id #?\t(NO SPACE!)
+		\r\t-e[0-9]\tEnds at PL id #?\t(NO SPACE!)
+		
+		\rReturns (from the last displayed):
+		\r\t0 \tOK
+		\r\t1 \tBAD
+		\r\t99 \thelp screen\n"
+	URL=""
+#
+#	Write default config file or source it
+#
+	thisConfig=module.youtube
+	if [ -f "$SEA_LIB_DIR/$thisConfig" ]
+	then	source "$SEA_LIB_DIR/$thisConfig"
+	else	temp_file="$SEA_CACHE_DIR/youtube-dl"
+		temp_dir="$XDG_DOWNLOAD_DIR/youtube"
+		format=webm
+		audio=vorbis
+		echo -e "temp_file=$temp_file\ntemp_dir=$temp_dir\nformat=$format\naudio=$audio" > "$SEA_LIB_DIR/$thisConfig"
+	fi
+	cmd_all="youtube-dl -c --console-title  --max-quality $format -o $temp_dir/%(title)s-%(id)s.%(ext)s"
+	cmd_audio="--extract-audio --audio-format  $audio"	# keep video file with: -k 
+	cmd_info="--write-description --write-info-json"
+	start="" ; stop=""
+	cmd="$cmd_all"
+#
+#	Check for argument
+#
+	for arg in ${@};do
+		case $arg in
+		# Help arguments
+		-\?|--\?|-h|-help|--h|--help)	needHelp=true	;;
+		# Place your arguments here
+		[a-zH]*) URL="$arg"
+			[ ! "" = "$(echo $URL|grep PL)" ] && playlist=true	;;
+		PL?)	playlist=true	;;
+		-pl)	playlist=true	;;
+		-s)	sound=true	;;
+		-lv)	listonly=true	;;
+		-all)	all=true	;;
+		-i)	info=true	;;
+		-s[0-9])	start="${arg:2}";;
+		-e[0-9])	stop="${arg:2}"	;;
+		esac
+	done
+	if [ true = $playlist ]
+	then	cmd_pl="--playlist-start" ; [ ! "" = "$start" ] && cmd_pl="$cmd_pl $start"
+		[ ! "" = "$stop" ] && cmd_pl="$cmd_pl --playlist-end $stop"
+	else	cmd_pl="--playlist-start --playlist-end"
+	fi
+#	
+#	Show Help and Exit?
+#
+	[ $needHelp = true ] && echo -e "$thisHelp" && exit $retval
+#
+#	Verify Requirements
+#
+	for app in youtube-dl ffmpeg
+	do isInstalled $app || requires="$requires $app";done
+	[ ! "" = "$(echo $requires)" ]  && \
+		sInst $requires && \
+		ReportStatus 1 "Installed $requires" || \
+		printf "\r$BORDER_LEFT Downloading..."
+#	
+#	Subs
+#
+	yt_make_valid() { # URL
+	# Checks argument and adds eventualy missing leading urls
+	#
+		url="$1" ; out=""
+		pre_watch="https://www.youtube.com/watch?v="
+		pre_list="https://www.youtube.com/playlist?list="
+		case "${url:0:2}" in
+		ht)	out="$url"	;;
+		PL)	out="$pre_list$url"	;;
+		*)	out="$pre_watch$url"	;;
+		esac
+		echo "$out"
+	}
+	yt_remove_done() { # URL
+	# Removes the provided URL from $temp_file
+	#
+		sed --posix s/"$1"/""/g -i "$temp_file" && \
+		echo "$1" >> "$temp_file.success"
+	}
+#
+#	Apply Arguments
+#
+	if [ "" = "$URL" ]
+	then	sEdit "$temp_file"
+		press
+	fi
+	[ true = $sound ] && 	cmd="$cmd $cmd_audio"
+	[ true = $info ] && 	cmd="$cmd $cmd_info"
+	[ true = $all ] && 	cmd="$cmd --all-formats"
+	[ true = $listonly ] && cmd="youtube-dl -F"
+#	
+#	Display
+#
+	cmd_pre="$cmd"
+	if [ "" = "$URL" ]
+	then	unset failed[@]
+		C=0
+		while read line
+		do	# This checks each line if its a PL or single video
+			# And modifies arguments accoding to it.
+			if [ ! "" = "$(echo $line|grep PL)" ] 
+			then	sT "Downloading from playlist: $URL"
+				cmd="$cmd_all $cmd_pl"
+			else	sT "Downloading $(youtube-dl --get-title $(yt_make_valid $line))"
+				cmd="$cmd_pre"
+			fi
+			$cmd $(yt_make_valid "$line") ; retval=$?
+			if [ $retval -eq 0 ]
+			then	yt_remove_done "$line" 
+				ReportStatus $? "Downloaded & removed $line"
+			else	failed[$C]="$line"
+				let C++
+				ReportStatus $? "Did not downloaded $line"
+			fi
+		done < "$temp_file"
+		
+		if [ ! "" = "${failed[*]}" ]
+		then	rm -f "$temp_file" ; touch "$temp_file"
+			for fail in ${failed[@]};do echo "$fail" >> "$temp_file";done
+			sE "These urls did fail:"
+			while read line;do ReportStatus 1 "* $line";done<"$temp_file"
+		else	ReportStatus 1 "Please provide videocodes or urls as argument or in the tempfile!"
+			echo -e "$thisHelp"
+			return 99
+		fi
+	else	if [ true = $playlist ]
+		then	sT "Downloading from playlist: $URL" 
+			cmd="$cmd_all $cmd_pl"
+		else	cmd="$cmd_pre"
+		fi
+		$cmd $(yt_make_valid "$URL") && rv=0 || rv=1
+		ReportStatus $rv "Downloaded $(youtube-dl --get-title $(yt_make_valid $URL))"
+		return $rv
+	fi

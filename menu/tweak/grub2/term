@@ -1,0 +1,79 @@
+#!/bin/bash
+#
+#	Description:	Changes among existing grub2 themes
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea)
+#	Release Date:   2013.07.11
+#	Changed Date:	2013.07.11
+	script_version=0.1
+#
+#	Title
+#
+	if [ ! -f /usr/share/script-tools/st.cfg ]
+	then	alias sT="echo"
+		alias sP="printf"
+		alias sE="echo"
+		SUCCESS="[ yay :) ]"
+		FAILURE="[ noo :( ]"
+		PROGRESS="[ wait.. ]"
+	fi
+	sT "sea's Grub2 Terminal output changer ($script_version)"
+	[ ! 0 -eq $UID ] && sE "Script requires root rights!" #&& return 1
+#
+#	Variables
+#
+	def=/etc/default/grub
+	dir_themes=/boot/grub2/themes/
+	dir_themes_d=""
+	#for d in $(ls $dir_themes);do [ -d "$dir_themes/$d" ] && dir_themes_d="$dir_themes_d $d";done
+#
+#	Looking for existing entry
+#	
+	line="$(grep GRUB_TERMINAL_OUTPUT $def)"
+	case "${line:0:1}" in
+	"#")	current=disabled ;;
+	"G")	current=enabled	;;
+	"")	current=none	;;
+	esac
+#
+#	Display
+#
+	sE "GRUB_TERMINAL_OUTPUT currently is:" "$(Capitalize $current)"
+	[ enabled = $current ] && sE "Enabled means all GRUB2 settings are back to basic B/W color."
+	sE
+	if ask "Do you want to change it?"
+	then	select entry in Back Toggle Add Remove
+		do 	[ "$entry" = "Back" ] && return 0
+			sE "Selected action:" "$entry"
+			break
+		done
+#
+#	Fix strings
+#
+		case $entry in
+		Toggle)	[ disabled = "$current" ] && REPL="${line:1}" || REPL="#$line"	;;
+		Add)	REPL="#GRUB_TERMINAL_OUTPUT=\"console\""				;;
+		Remove) REPL=""	;;
+		esac
+#
+#	Save setting
+#
+		if [ ! "" = "$(echo $line)" ]
+		then	sed s\\$line\\$REPL\\g -i $def && \
+			retval=0 || retval=1
+		else	echo "$REPL" >> $def && \
+			retval=0 || retval=1
+		fi
+	#
+	#	Rebuild GRUB Menu, if successfull
+	#
+		if [ 0 -eq $retval ]
+		then	sE "Changed to:" "$(grep TERMINAL_OUTPUT $def)"
+			ask "Rebuild GRUB2?" && \
+			grub2-mkconfig -o /boot/grub2/grub.cfg > /dev/zero && \
+			return 0
+		fi
+		return 1
+	else	sE "" "$BACK"
+		return 0
+	fi

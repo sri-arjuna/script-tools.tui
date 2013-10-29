@@ -1,0 +1,57 @@
+#!/bin/bash
+#
+#	License:	GPL v3
+#	Description:	Mounts all devices found in /dev
+#			Based upon letter limiter: h,s
+#	Author: 	Simon A. Erat, erat.simon æ gmail . com
+#	Date created:	2012.11.14
+#	Date changed:	2013.08.25
+	script_version=0.3
+#
+	source /usr/share/script-tools/st.cfg > /dev/zero
+#
+#	Title
+#
+	sT "Mount all partitions ($script_version)"
+#
+#	Help
+#
+	[ "-h" = "$1" ] && \
+		echo -e "$(basename $0) ($script_version)
+		\rMOunts ALl PArtitions from all your drives that are not mounted to /mnt/[hs]d[a-z][1-99]..
+		\rUsage: $(basename $0) [options]
+		\rWhere options are:
+		\r\t-h\tThis screen
+		\r\t-u\tUnmounts all /mnt/[hs]d[a-z][1-99] mounts
+		\r" && exit 99
+	[ ! 0 -eq $UID ] && sE "Script requires root rights!" && exit 1
+#
+#
+#	Variables
+#
+	list_raw="$(ls /dev/|grep [hs]d[az])"
+	list_devices=$(echo "$list_raw"|grep -v [0-9])
+	list_parts=$(echo "$list_raw"|grep [0-9])
+	list_mounts="$(mount)"
+	excludes=""
+	excludes="$(for e in Extended swap;do sudo fdisk /dev/[hs]d[a-z] -l|grep $e|awk '{print $1}';done)"
+#
+#	Output
+#
+	if [ "$1" = "-u" ]
+	then	for part in $list_parts
+		do	if [ "" = "$(echo $excludes|grep $part)" ] && [ -d "/mnt/$part" ] && [ ! "" = "$(mount|grep $part)" ]
+			then	umount /mnt/$part
+				ReportStatus $? "Unmounted: $part"
+			fi
+		done
+		exit
+	fi
+	for part in $list_parts
+	do	[ "" = "$(echo $excludes|grep $part)" ] && \
+			if [ "" = "$(echo $list_mounts|grep $part)" ] 
+			then	[ ! -d "/mnt/$part" ] && CheckPath "/mnt/$part"
+				mount /dev/$part /mnt/$part > /dev/zero 2>&1
+				ReportStatus $? "Mounted /mnt/$part"
+			fi
+	done

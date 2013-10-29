@@ -1,0 +1,7 @@
+prj_name=$prj_name
+prj_user=$prj_user
+prj_vcs=$prj_vcs
+pub_username='$pub_username'
+pub_email='$pub_email'
+rem_url=$rem_url
+loc_url=$loc_url

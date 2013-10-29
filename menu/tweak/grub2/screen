@@ -1,0 +1,54 @@
+#!/bin/bash
+#
+#	Changes GRUB2 Screen Resolution
+#
+#
+#	License:        GPL v3
+#	Author:         Simon A. Erat (sea)
+#	Release Date:   2012.06.04
+#	Changed Date:	2013.06.15
+	script_version=0.6
+#
+#	Title
+#
+	sT "sea's GRUB2 Screen Resolution changer ($script_version)"
+	[ ! isRoot ] && sE "Requires root access!" "$WARN" && return 1
+#
+#	Font settings / Variables
+#
+	gfxmodes="auto 640x480 800x600 1024x600 1024x768 1280x800 1280x1024 1440x900 1600x900 1680x1024"
+	color_depth="auto 8 16 32" ; depth=""
+	
+	grubdir=/boot/grub2
+	grubfile=/etc/default/grub
+	tmpfile=/tmp/grub
+#
+#	Action
+#
+	sE "Select your display resolution:"
+	select gfxmode in Back $gfxmodes
+	do	[ Back = $gfxmode ] && sE " " "$BACK" && break
+		if [ ! "auto" = "$gfxmode" ]
+		then	sE "Please choose color depth:"
+			select depth in $color_depth;do break;done
+		fi
+		if [ ! "" = "$depth" ] && [ ! "auto" = "$depth" ]
+		then	colorsstring="$gfxmode"x"$depth"
+		else	colorsstring="$gfxmode"
+		fi
+		repl="$(grep GRUB_GFXMODE $grubfile)"
+		if [ "" = "$(echo $repl)" ]
+		then	echo "GRUB_GFXMODE=$colorsstring" >> $grubfile
+			[ "" = "$(grep GRUB_GFXPAYLOAD= $grubfile)" ] && \
+				echo "GRUB_GFXPAYLOAD=$colorsstring" >> "$grubfile"
+		else	sed s/"$repl"/"GRUB_GFXMODE=$colorsstring"/g -i $grubfile
+			#repl="$(grep GRUB_GFXPAYLOAD_LINUX $grubfile)"
+			#sed s/"$repl"/"GRUB_GFXPAYLOAD_LINUX=$colorsstring"/g -i $grubfile
+		fi
+		if [ $? -eq 0 ] 
+		then	sE
+			ask "Rebuild GRUB2?" && \
+			grub2-mkconfig -o /boot/grub2/grub.cfg > /dev/zero
+		fi
+		break
+	done

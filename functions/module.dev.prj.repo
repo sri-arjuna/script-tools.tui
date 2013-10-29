@@ -1,0 +1,132 @@
+
+#
+#	Desription:	Handles REPO projects
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea), erat.simon æ gmail.com
+#	Release Date:   2013.07.31
+#	Changed Date:	2013.08.01
+#
+#
+	REPO_New() { # [ LABEL ]
+	# Creates a repo config file in (selected) LABEL
+	#
+	#
+	#	Title
+	#
+		sT "Create REPO configuration $1"
+	#
+	#	Variables
+	#
+		lbl=""
+		repo_user=""
+		repo_adress=""
+		repo_port=""
+		repo_path_local=""
+		repo_path_remote=""
+		repo_password=""
+		[ ! "" = "$1" ] && lbl="$1"
+		[ "" = "$lbl" ] && lbl=$(PRJ_Select)
+		source $ST_USER_PRJ/$lbl/conf
+		source $ST_USER_PRJ/$lbl/rpm || return 1
+		
+		def_repo_user="anonymous"
+		def_repo_adress="repo-server.com"
+		def_repo_port="22"
+		def_repo_path_local="$outputdir/repo"
+		def_repo_path_remote="/"
+		def_repo_password=""
+	#
+	#	Asking values
+	#
+		doAsk=false
+		if [ -f $ST_USER_PRJ/$lbl/sf ] 
+		then	if ask "Create the repo on sourceforge?"
+			then	doAsk=false
+				source $ST_USER_PRJ/$lbl/sf
+				repo_user="$sf_username"
+				repo_adress="\$repo_user@frs.sourceforge.net"
+				repo_port=""
+				repo_path_local=$(input "What is the local repo path? ($def_repo_path_local) ")
+				repo_path_remote="/home/frs/project/$sf_name"
+				repo_password="" 
+				sE "Please create the folder repo manualy on https://sourceforge.net/projects/$sf_name/files/" "$INFO"
+				#if SSH_Require $lbl
+				#then	sE "No ssh entry found."
+				#	ask "Create one (y) or provide password (n)?" && \
+				#		repo_password="" && SSH_New $lbl #|| \
+				#		#repo_password="$(input 'What is sourceforge password?')"
+				#else	repo_password=""
+				#fi
+				
+				
+			else	doAsk=true
+			fi
+		else 	doAsk=true
+		fi
+		if [ true = $doAsk ]
+		then	repo_user=$(input "What is the username? ($def_repo_user) ")
+			repo_adress=$(input "What is the adress? ($def_repo_adress) ")
+			repo_port=$(input "What is the port? ($def_repo_port) ")
+			#repo_path_local=""$(input "What is the local path? ($def_repo_path_local) ")
+			repo_path_remote=$(input "What is the remote path? ($def_repo_path_remote) ")
+			repo_password=$(input "What is the password?")
+		fi
+		if [ ! -f $outputdir/../$prj_name.repo ]
+		then	str="[$prj_name]\nname=$(Capitalize $prj_name)\nbaseurl=https://sourceforge.net/projects/$prj_name/files/repo\nenabled=1\ngpgcheck=0"
+			echo -e "$str" > "$outputdir/$prj_name.repo"
+		fi
+	#
+	#	If empty, set default generated
+	#
+		[ "" = "$repo_user" ] 	&& repo_user="$def_repo_user"
+		[ "" = "$repo_adress" ] 	&& repo_adress="$def_tp_adress"
+		[ "" = "$repo_port" ] 	&& repo_port="$def_repo_port"
+		[ "" = "$repo_path_local" ] && repo_path_local="$def_path_local"
+		[ "" = "$repo_path_remote" ] && repo_path_remote="$def_repo_path_remote"
+	#
+	#	Saving to file
+	#
+		cat > "$ST_USER_PRJ/$lbl/repo" << EOF
+# Script-Tools ($stVer) REPO configuration for project $prj_name ($version)
+	repo_user="$repo_user"
+	repo_adress="$repo_adress"
+	repo_port="$repo_port"
+	repo_path_local="$repo_path_local"
+	repo_path_remote="$repo_path_remote"
+	repo_password="$repo_password"
+EOF
+		#which lftp | grep which > /dev/zero && sInst lftp
+		which sftp | grep which > /dev/zero && sInst sftp
+		which "ftp" | grep which > /dev/zero && sInst "ftp"
+	}
+	REPO_Upload() { # LABEL
+	# Uploads all files from $repo_path_local
+	# to $repo_path_remote
+		#echo TEST
+		[ "" = "$1" ] && \
+			sE "Select project with REPO:" && \
+			lbl=$(PRJ_Select) || \
+			lbl="$1"
+		source "$ST_USER_PRJ/$lbl/repo"
+		
+		cd $repo_path_local
+		sP "Creating repositry" "$WORK"
+		CheckPath sources > /dev/zero
+		mv *.src.* sources
+		createrepo . > /dev/zero
+		ReportStatus $? "Created repositry"
+		
+		sP "Uploading data..." "$WORK"
+		sftp $repo_adress<<SCRIPT_ON
+		lcd $repo_path_local
+		cd $repo_path_remote
+		mkdir repo
+		cd repo
+		mput * 
+		mkdir repodata
+		cd repodata
+		lcd repodata
+		mput * 
+		bye
+SCRIPT_ON
+	}

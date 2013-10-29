@@ -1,0 +1,93 @@
+#!/bin/bash
+# ------------------------------------------------------------------------------
+#	sea's Script Tools: The 3rd Generation
+#	Description:	Collects the scripts from arguments
+#	Author:		Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created:	2012.04.24
+#	Changed:	2013.09.07
+#	License:	GPL v3
+#	Resource:	
+# ------------------------------------------------------------------------------
+#
+#	Variables
+	#if [ ! "" = "$(echo $DESKTOP_SESSION)" ] || [ ! "" = "$(echo $TERM|grep -i term)" ]
+	if [ "$TERM" = "linux" ] || [ "$TERM" = "" ]
+	then	subDir="$SEA_CLI_DIR"
+	else	subDir="$SEA_GUI_DIR"
+	fi
+	ddd=default
+	filereached=false
+	cd $subdir
+#
+#	Parse arguments
+#
+	case $1 in
+	my)		if [ ! "" = "$(ls $SEA_SCRIPT_DIR/)" ]
+			then	sMenu $SEA_SCRIPT_DIR
+			else	sE "You have no custom scripts yet." "$INFO"
+				if ask "Create one now?"
+				then	select mode in MinimalHeader Exportable;do break;done
+					newName=$(input "Enter the scripts name: ")
+					case $mode in
+					MinimalHeader)	newScript $newName -m	;;
+					Exportable)	newScript $newName	;;
+					esac
+					sMenu $SEA_SCRIPTS_DIR
+				#else	ReportStatus 6 ""
+				fi
+			fi
+			exit $?		;;
+	gcmdlist|gencmd)
+			source $stDir/Script-Core/man_cmd_list_gen.sh
+			exit $?		;;
+	help|readme|rm)	
+			sE "Displaying README, press CTRL+C or Q to quit." "$PROGRESS"
+			press
+			cat $SEA_DOC_DIR/README | more	
+			exit $?
+			;;
+	cl|commands|commandlist)
+			sE "Displaying CommandList, press CTRL+C or Q to quit." "$PROGRESS"
+			press
+			cat $SEA_DOC_DIR/COMMANDS | more 
+			exit $?
+			;;
+	fl|functions|functionlist)
+			sE "Displaying CommandList, press CTRL+C or Q to quit." "$PROGRESS"
+			press
+			cat $SEA_DOC_DIR/FUNCTIONS | more 
+			exit $?
+			;;
+	update)		sInst script-tools
+			exit
+			;;
+	esac
+	test "0" = "$#" && test -f $subDir/$ddd.scripts && source  $subDir/$ddd.scripts && return 0
+	for arg in $@ ; do
+		if test -d "$subDir/$arg" ; then
+		    subDir=$subDir/$arg
+		    if test -f $subDir/$arg/$ddd.$arg ; then
+		        . $subDir/$ddd.$arg
+		        filereached=true
+		    fi
+		fi
+#
+#	FILE
+#
+		if test -f "$subDir/$arg" ; then
+		    . $subDir/$arg
+		    subDir=$subDir/$arg
+		    filereached=true
+		fi
+	done
+#
+#	FILE reached ??
+#
+	if [ ! "$filereached" = "true"  ]
+	then	if [[ -f $subDir/$arg/$ddd.$arg ]]
+		then    source $subDir/$arg/$ddd.$arg
+			exit $?
+		else    sMenu "$subDir" $@
+			return $?
+		fi
+	fi

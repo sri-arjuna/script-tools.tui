@@ -1,0 +1,49 @@
+#!/bin/bash
+#
+#	Desription:	Adds a new script to $SEA_SCRIPT_DIR (~/.config/script-tools/scripts)
+#	Lisence:        GPL v3
+#	Author:         sea ; < erat DOT simon æ gmail D0T com >
+#	Created:	2013.07.21
+#	Changed:	2013.07.21
+	script_version=0.1
+#
+#	Title
+#
+	title="sea's Custom Script Adder"
+	sT "$title (0.1)"
+#
+#	Variables
+#
+	basePath="$SEA_SCRIPT_DIR"
+	thisFile=""
+	[ ! -z $4 ] && \
+		thisFile="$4"
+	#echo $4
+	[ "-h" = "$4" ] && \
+		echo -e "new ($script_version)
+		\rUsage: st conf scripts new [ FILENAME ]
+		" && \
+		return 99
+#
+#	Display
+#
+	if [ "" = "$(echo $thisFile)" ]
+	then	newName=$(input "What is the new script's name?: ")
+		sE "What kind of header do you want?"
+		A="Small header"
+		B="Script Compatibility"
+		select header in "$A" "$B"
+		do	case $header in
+			"$A")	newScript "$newName" -s	
+				returnval=$?		;;
+			"$B")	newScript "$newName" 
+				returnval=$?		;;
+			esac
+			ReportStatus $returnval "Created script $newName"
+			break
+		done
+	else	[ -s "$basePath/$thisFile" ] && \
+			ReportStatus 1 "File ($thisFile) is not empty!" && \
+			return 1
+		newScript "$thisFile" -s
+	fi

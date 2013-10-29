@@ -1,0 +1,139 @@
+#!/bin/bash
+#
+#	Desription:	
+#	Lisence:        GPL v3
+#	Author:         sea ; < erat DOT simon æ gmail D0T com >
+#	Created:	2013.07.26
+#	Changed:	2013.08.03
+	script_version=0.4
+#
+#	Title
+#
+	title="sea's Activate Login Manager"
+	sT "$title (BETA: $script_version)"
+#	
+#	Variables
+#
+	tdir=/lib/systemd/
+	lm_ar=( cdm gdm kdm lightdm lxdm slim xfwm4 )
+	current="$(basename $(ls -l /etc/systemd/system/display-manager.service|awk '{print $11}'))"
+	current=${current:0:(-8)}
+	lm_found=""
+	newLM=""
+	retval=99
+	needHelp=false
+	thisConfig=module.set.lm.activ
+	thisHelp="activ ($script_version)
+		\rỤsage: st set lm activ [LM]
+		\r\t-h\tDisplays this screen
+		\r\t-c\tOpens the config file in your favorite editor
+		\r\tLM\tWhere LM is one of these:
+		"
+	for tmp in ${lm_ar[@]};do thisHelp+="\r\t\t * $tmp
+	";done
+#
+#	Write default config file or source it
+#
+	if [ -f "$SEA_LIB_DIR/$thisConfig" ] && [ -z $4 ]
+	then	source "$SEA_LIB_DIR/$thisConfig"
+		ReportStatus $? "Configuration loaded"
+		newLM="$DEFAULT_LOGIN_MANAGER"
+		passed=config
+	elif [ ! -f "$SEA_LIB_DIR/$thisConfig" ]
+	then	if ask "Create a default option?"
+		then	newLM=$(input "What is your prefered default login manager? ")
+			echo -e "DEFAULT_LOGIN_MANAGER=$newLM" > "$SEA_LIB_DIR/$thisConfig"
+			ReportStatus $? "Configuration saved"
+			passed=new
+		else	echo -e "DEFAULT_LOGIN_MANAGER=" > "$SEA_LIB_DIR/$thisConfig"
+			ReportStatus $? "Written empty default"
+			passed=empty
+		fi
+	fi
+#
+#	Check for argument
+#
+	if [ ! -z "$4" ]; then
+		case $4 in
+		-\?|--\?|-h|-help|--h|--help)
+			needHelp=true	;;
+		-c)	sEdit "$SEA_LIB_DIR/$thisConfig"
+			press
+			source "$SEA_LIB_DIR/$thisConfig"
+			[ ! "" = "$DEFAULT_LOGIN_MANAGER" ] && \
+				ask "Activate $DEFAULT_LOGIN_MANAGER?" && \
+				newLM="$DEFAULT_LOGIN_MANAGER" || \
+				return 0 ;;
+		esac
+	fi
+	[ ! -z $4 ] && newLM="$4" && \
+		passed=passed && \
+		ReportStatus 0 "Provided argument: $4"
+#	
+#	Subs
+#
+	
+#
+#	Handle Arguments
+#
+	#[ -z "$1" ] && echo -e "$thisHelp" && exit $retval
+	[ $needHelp = true ] && echo -e "$thisHelp" && exit $retval
+#	
+#	Display
+#
+	if [ nothing = "$DESKTOP_SESSION" ] # || [ xterm = "$TERM" ]
+	then	sE "Attention" "Attention"
+		sT "Attention: You are running in graphical mode"
+		sE "Attention: This script is designed for init 3" "Attention"
+		sE
+		sE "Changing the desktop session while running," "might cause loss of current sessiondata"
+		sE "Best experience:"
+		sE "1) Save all data and close applications"
+		sE "2) Press CTRL+ALT+F2"
+		sE "3) Login as user: root"
+		sE "4) Execute: init 3"
+		sE "5) Execute: st set lm activ"
+		sE "6) Login in with the new desktop manager"
+		sE
+		sE "Attention" "Attention"
+		sT "Attention: You are running in graphical mode"
+		sE "Attention" "Attention"
+		press
+	fi
+	sP "Generating data..." "$WORK"
+	for item in ${lm_ar[@]}
+	do	tmp=$(ls $tdir/system|grep "$item")
+		[ ! "" = "$(echo $tmp)" ] && \
+			lm_found+=" $item" && \
+			isRoot && ln -sf "$tdir/system/$item.service" "/etc${tdir:4}$item.service"
+	done
+	[ ! "" = "$(echo $lm_found)" ] 
+	ReportStatus $? "Found available login managers: $lm_found"
+	sE "Current active display-manager:" "$current"
+	# Up to here for non root users ;)
+	[ ! 0 -eq $UID ] && sE "This script requires root rights." "$FAILURE" && exit 1
+#
+#	Generate "$thisService"
+#	
+	if [ "" = "$(echo $newLM)" ]
+	then	sE "Please select the login manager you want to activate:"
+		select newLM in $lm_found;do break;done
+	fi
+	thisService="$newLM.service"
+	srcpath="/lib/systemd/system/$thisService"
+
+	sT "Activate $thisService"
+	sP "Enabling $thisService" "$WORK"
+	[ -f "$srcpath" ] && ln -sf "$srcpath" /etc/systemd/system/display-manager.service
+	#systemctl -q enable display-manager.service
+	ReportStatus $? "Enabled $newLM as new login manager"
+
+	#sP "Disabling current login manager ($current)" "$WORK"
+	#systemctl -q disable $current.service > /dev/zero
+	#ReportStatus $? "Disabled $current login manager"
+
+	#sP "Activating $thisService" "$WORK"
+	#systemctl -q start $thisService
+	#ReportStatus $? "Activated $thisService"
+
+	sE "Logout to note changes" "$INFO"

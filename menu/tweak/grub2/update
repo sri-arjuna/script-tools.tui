@@ -1,0 +1,3 @@
+sT "Update GRUB2"
+[ ! 0 -eq $UID ] && sE "Requires root access!" "FAIL" && return 1
+grub2-mkconfig -o /boot/grub2/grub.cfg

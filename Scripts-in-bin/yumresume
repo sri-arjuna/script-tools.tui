@@ -1,0 +1,25 @@
+#!/bin/bash
+#
+#	sea's Script Tools: The 3rd Generation
+#	File Description:	Resumes pendent or unfinished files to update/remove/modify
+	script_version=0.7
+#	Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created (y.m.d):    2011.11.01
+#	Changed:            2012.08.16
+#	License:            GPL v3
+#
+#	Title
+#
+	source /usr/share/script-tools/st.cfg
+	sT "Yum Resume, using yum-complete-transaction ($script_version)"
+#
+#	Help
+#
+	[ "-h" = "$1" ] && \
+		echo -e "$(basename $0) ($script_version)
+		\rResumes last transaction
+		\r" && exit 99
+#
+#	Display
+#
+	sudo yum-complete-transaction || su -c yum-complete-transaction

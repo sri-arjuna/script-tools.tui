@@ -1,0 +1,450 @@
+#!/bin/bash
+#
+#	Description:	Creates an index page and a hidden configuration, 
+#					so it'll be easier to keep going
+#	License:	GPLv3
+#	Author: 	Simon Arjuna Erat (sea), < erat · simon æ gmail · com >
+#					   	   sea@fedorapeople.org
+#	Created: 	2013.08.29
+#	Changed:	2013.09.03
+	script_version=0.4
+#
+#	Short information regarding usage: [ Prepare to help ]
+#	
+	thisHelp="
+$(basename $0) ($script_version)
+Usage:	$(basename $0) [options]
+Where options are:
+	-h	This screen
+"
+	thisHelpLong="
+	1) it requires a 1-time setup
+	2) so you can later just change a file
+	3) but usualy just run: gen-fas-index
+	--------------------------------------
+	4) In a folder it expects either just specs, rpms, srpms
+	   OR
+	   a full set package, including: 
+	   	spec, srpm, rpm, tarball, review-FULLPACKAGENAME.html
+	   	as well as folders named either \"preview\" or \"screenshot\"
+	5) Further it will only list the folders you named in LIST_TASK=""
+	   In that order
+	6) Repo must be placed at webspace's root, having local dirname of public_html.
+	"
+#
+#	Variables required for script handling
+#
+	[ -z XDG_CONFIG_DIR ] && XDG_CONFIG_DIR=$HOME/.config
+	thisConf=$XDG_CONFIG_DIR/$(basename $0)/fas
+	#gen-fas-index-
+#
+#	Change these variables if you dont want a configuration folder
+#	Changes only within this block/intend ;;    until:    Stop here
+#
+	LIST_TASK="GoodEnough review Unstables"	# Which folders to show, they'll be created if not existing
+	ROWCOUNT=2				# How many cells per line
+	doRepo=true				# Toggle if repo should be created
+	mode=packages				# Packages, ??
+#
+#	Stop here
+#	Hardcoded variables start here
+#
+	FAS_BASE=$SEA_CFG_DIR/fas
+	FAS_CONF="$FAS_BASE/info"
+	FAS_PEOPLE="$FAS_BASE/fedorapeople"
+	FAS_INDEX="$FAS_BASE/index"
+	[ ! -f $FAS_CONF ] && \
+		sE "There is no configuration found for FAS." "$FAIL" && \
+		( ask "Add/Create one now?" && st $2 $3 user new || return 1 )
+	source $FAS_CONF
+	source $FAS_PEOPLE
+	$doIndex && source $FAS_INDEX
+	ROOT=$PEOPLE_ROOT
+	
+	[ "/$FAS_USER" = "$ROOT" ] && \
+		sE "Must have webspace on fedorapeople.org, sorry." "$FAIL" && \
+		return 1
+	
+	INDEX=$ROOT/index2.html
+	cd $ROOT
+#
+#	DEFINE HTML STRINGS / FUNCTIONs
+#
+	t="\t"
+	br="<br>\n"
+	hr="<hr width=\"90%\">"
+	tabtrtd="<table>\n\t<tr>\n\t\t<td>"
+	tdtd="\n\t\t</td>\n\t\t<td>"
+	tdtrtrtd="\n\t\t</td>\n\t</tr>\n\t<tr>\n\t\t<td>"
+	tdtrtab="\n\t\t</td>\n\t</tr>\n</table>"
+	linkit() { 
+		#[ -z $2 ] && return 1
+		echo "<a href=\"$1\">$2</a>"
+	}
+	img() {
+		#[ -z $1 ] && exit 1
+		echo "<img>$1</img>"
+	}
+	title() {
+		#[ -z $2 ] && echo "Usage: $0 1-5 TEXT" && exit 1
+		echo "<h$1>$2</h$1>"
+	}
+	par() {
+		#[ -z $1 ] && exit 1
+		echo "\n<p>\n\t$1\n</p>\n"
+	}
+	text() {	
+		#[ -z $1 ] && exit 1
+		echo "<textarea cols=50 rows=5>$1</textarea>"
+	}
+	print_head="<!DOCTYPE html>	
+<html>
+<head>
+	<title>.:· $FAS_USER's Fedora HQ ·:.</title>
+	<meta charset=\"utf-8\">
+	<meta generator=\"Script-Tools $stVer, by Simon A. Erat\">
+	<style>
+		a 		{ color:royalblue;
+				  text-shadow: 0 1 10px #ffffff;
+				};
+		a.title		{ color:silver
+				};
+		a.visited	{ color:cyan
+				};
+		a.hover		{ color:navyblue
+				  style:underline
+				};
+		a.active	{ color:navyblue
+				};
+		body		{ background-color:grey
+				  color:white
+				  background=$PEOPLE_BG
+				};
+		
+		
+	</style>
+</head>
+<body>\n<center>
+$(echo $tabtrtd|sed s,'td','td colspan=2 align=center width=90%',g)
+<center>"
+	print_foot_notice=$(par $(basename $0) "was written by $AUTHOR")
+	print_foot="$hr\n$tdtrtab
+$print_foot_notice$br
+This file ($(basename $INDEX)) was last generated at $(date +'%Y.%m.%d - %H:%M (%Z)').
+</center>
+</body>
+</html>"
+#
+#	Subs
+#
+	decideMode() { # PATH
+	#
+	#
+		countem() { echo $#; }
+		listdirs() { ls -l | grep ^d|awk '{print $9}';}
+		[ -z $1 ] && exit 1 || cd "$1"
+		SECTION="$(dirname $1)"
+		[ ! "$ROOT" = "$SECTION" ] && cd "$SECTION" || SECTION=$(basename $SECTION)
+		for fold in $(listdirs $(pwd))
+		do	SRC="$(get_srpms $fold)"
+			RPM="$(get_rpms $fold)"
+			SPEC="$(get_specs $fold)"
+			TARBALL="$(get_tarball $fold)"
+		
+		
+			list="$SRC $RPM $SPEC $TARBALL"
+			num=$(countem $list)
+			if [ 4 -ge $num ]
+			then	# NO Package
+				echo 
+			else	echo $(package2html "$fold")
+			fi
+		done
+	}
+	get_specs() { # PATH
+	# Prints a list of available specs in PATH
+	#
+		[ -z $1 ] && exit 1 || cd "$1"
+		echo "$(ls|grep -i spec|sort)"
+	}
+	get_srpms() { # PATH
+	# Prints a list of available specs in PATH
+	#
+		[ -z $1 ] && exit 1 || cd "$1"
+		echo "$(ls|grep -i \.src\.|sort)"
+	}
+	get_rpms() { # PATH
+	# Prints a list of available specs in PATH
+	#
+		[ -z $1 ] && exit 1 || cd "$1"
+		echo "$(ls|grep -i rpm|grep -v \.src|sort)"
+	}
+	get_tarball() { # PATH
+	# Prints a list of available specs in PATH
+	#
+		[ -z $1 ] && exit 1 || cd "$1"
+		echo "$(ls|grep -i tar|sort)"
+	}
+	package2html() { # PATH
+	# Searches in path for below files and prints them as html
+	# spec srpm rpm tarball review
+		[ -z $1 ] && echo "Usage: $0 PATH" && return 1
+		
+		cd $SECTION
+		
+		
+		for task in $(ls -d);do
+			CAPTION="$task"
+			SPEC=$(get_srpms $1)
+			TAR=$(get_tarball $1)
+			BUILD=$(get_rpms $1| awk '{print $1}')
+			SRPM=$(get_srpms $1| awk '{print $1}')
+		
+			[ "$(dirname $1)" = "$(basename $1)" ] && \
+				PRE="$CAPTION" || PRE=$task/$CAPTION
+		
+			if [ ! "" = "$(echo $BUILD)" ]
+			then	tmp="review-$BUILD.html"
+				[ -f $tmp ] && \
+					BUILDrev="\t(<a href=\"$PRE/$tmp\">review</a>)" || \
+					BUILDrev=""
+			fi
+			if [ ! "" = "$(echo $BUILD)" ]
+			then	tmp="review-$SRPM.html"
+				[ -f $tmp ] && \
+					SRPMrev="\t(<a href=\"$PRE/$tmp\">review</a>)" || \
+					SRPMrev=""
+			fi
+			
+			folder_html #>> $INDEX
+		done
+	}
+	fas_repo() {
+	# Searches all *rpm in $PEOPLE_ROOT and places them in $PEOPLE_ROOT/repo[-src]
+	# Sorts them to dirs and creates the repo and repofile
+		cd "$ROOT"
+		repo_sort() {
+			sP "TODO repo_sort" "$WORK"
+		}
+		repo_html() {
+			echo -e "<! --\n\t\t#\n\t\t\tPrint REPO snippet START\n\t\t#\n-->"
+		# 	done intro	
+			br="<br>\n"
+			echo -e $tabtrtd|sed s,td,"td colspan=2 align=center",g
+			$showFas && \
+				title 2 "All-in-one repositry of $FAS_USER:" || \
+				title 2 "All-in-one repositry"
+			echo -e $tdtrtrtd
+		#	REPO
+			repo=fedorapeople-$FAS_USER.repo
+			linkit ./$repo "Normal"
+			repo_file > $ROOT/$repo
+			echo -e $br
+			text "$(cat $ROOT/$repo)"
+		#	table div
+			echo -e $tdtd
+		#	SOURCE
+			repo=fedorapeople-$FAS_USER-SOURCES.repo
+			linkit ./$repo "SOURCES"
+			echo -e $br
+			repo_file src > $ROOT/$repo
+			text "$(cat $ROOT/$repo)"
+			echo -e $tdtrtab
+		# 	do outro	
+			echo -e "<! --\n\t\t#\n\t\t\tPrint REPO snippet END\n\t\t#\n-->"
+		}
+		repo_file() { # [ src ]
+			if [ -z $1 ] 
+			then	this=repo ;	title="" ; 	text=""
+			else	this=repo-src ; title="-source" ; text=" sources"
+			fi
+			echo "[FedoraPeople-$FAS_USER$title]"
+			echo "name=All$text packages of $FAS_EMAIL"
+			echo "baseurl=http://$FAS_USER.fedorapeople.org/$this"
+			echo "enabled=1"
+			echo "gpgcheck=0"
+			title=""
+		}
+	#	Clean existing repo
+		for this in repo repo-src;do [ -d $ROOT/$this ] && rm -fr $ROOT/$this;mkdir -p $ROOT/$this ;done
+	#	Find packages and move to proper repo dir
+		sP "Collecting packages..." "$WORK"
+		pkgs_src=$(find ./ -name *.src.rpm)
+		for pkg in $pkgs_src;do ln -sf ${pkg:2} repo-src/$(basename ${pkg:2});done
+		
+		pkgs_rpm=$(find ./ -name *rpm|grep -v \.src\.)
+		for pkg in $pkgs_rpm;do ln -sf ${pkg:2} repo/$(basename ${pkg:2});done
+		ReportStatus $? "Collected and symlinked packags"
+	#	Work with dirs
+		C=1
+		for this in repo repo-src;do
+			sP "Working on $this ($C/2) : sorting"
+		#	Sort files
+			repo_sort $ROOT/$this && \
+				sP "Sorted $ROOT/$this ($C/2)" "$DONE" || \
+				sP "Sorted $ROOT/$this ($C/2)" "$FAIL"
+			cd $ROOT/$this
+			
+		#	Create repo
+			sP "Create $this ($C/2)" "$WORK"
+			#createrepo . > /dev/zero
+			ReportStatus $? "Created $ROOT/$this ($C/2)"
+			let C++
+		done
+	#	Show output
+		repo_html >> $INDEX
+	}
+#
+#	Display
+#
+	TIME_START="$(date +'%s')"
+	TIME_START_AFTER="$(date +'%N')"
+	sT "Creating $INDEX"
+	sP "Write header..." "$WORK"
+	for TASK in header title repo folders footer
+	do	case $TASK in
+		header)	touch $INDEX
+			echo -e "$print_head" > $INDEX
+			ReportStatus $? "Wrote header"
+			;;
+		title)	sP "Writing title.." "$WORK"
+			$showFAS && \
+				opt="${br}/home/$FAS_EMAIL" || opt=""
+			link=$(linkit "http://fedorapeople.org" "FedoraPeople")
+			str=$(title 1 "$link$opt")
+			echo -e "$str" >> $INDEX
+			echo -e "Fedora users are usualy interested in the Repo files or BUILD's, other users might prefer the tarball.$br$hr" >> $INDEX
+			ReportStatus $? "Wrote title"
+			;;
+		repo)	if $doRepo 
+			then	sP "Writing repositry..." "$WORK"
+				fas_repo
+				ReportStatus $? "Wrote repositry"
+			fi
+			;;
+		folders)
+			for fold in $showFolders;do
+				echo -e "<! --\n\t\t#\n\t\t\tPrint $fold snippet START\n\t\t#\n-->" >> $INDEX
+				decideMode $ROOT/$fold >> $INDEX
+				echo -e "<! --\n\t\t#\n\t\t\tPrint $fold snippet END\n\t\t#\n-->"  >> $INDEX
+			done
+			;;
+		footer)	echo -e "$print_foot" >> $INDEX
+			;;
+		esac
+	done
+
+#$browser_web $INDEX
+
+
+
+
+
+	exit
+
+
+
+
+
+	
+	
+	echo "Generate index of 'stable' packages.."
+	if [ ! "" = "$(echo $LIST_PLAIN)" ]
+	then	# Print total table for all 'stable' packages
+		echo -e "<table width=90%>\n\t<tr>\n\t\t<td colspan=2>" >> "$DEST"
+		for task in $LIST_PLAIN
+		do 	echo "Working on: $task !--TODO--!"
+			echo -e "<h3>$task</h3>" >> "$DEST"
+			folder2html $task	 >> "$DEST"
+		done
+		echo -e "\t\t</td></tr>\n\t\t<tr><td>" >> "$DEST"
+	fi
+	
+	count=0
+	echo -e "\t\t<table width=90%>\n<tr>" >> "$DEST"
+	for task in $LIST_TASK
+	do 	cd $here
+		[ $task = repo ] && opt=" colspan=2" || opt=""
+		if [ $count -le $[ $ROWCOUNT - 1 ] ]
+		then	echo -e "\t\t<td valign=top align=center$opt>" >> "$DEST"
+		else	echo -e "\t\t</tr><tr><td valign=top align=center$opt>" >> "$DEST"
+			count=0
+		fi
+		
+		if [ -d "$task" ] && [ ! "repo" = "$task" ]
+		then	echo "Generate index of '$task' packages.."
+			echo -e "<h2>$task</h2>" >> "$DEST"
+			cd $here/$task
+			for sub in $(ls);do
+				echo " * Package: $sub"
+				[ -d $here/$task/$sub ] && \
+					folder2html $here/$task/$sub	 >> "$DEST"
+			done
+		elif [ "repo" = "$task" ]
+		then	echo -e "\n<h2>Repositry files:</h2>" >> "$DEST"
+			cd "$ROOT"
+			[ ! "" = "$(ls $ROOT/repo*)" ] && rm -fr $ROOT/repo*
+			for this in repo repo-src;do
+				[ -d $ROOT/$this ] && rm -fr $ROOT/$this
+				mkdir -p $ROOT/$this
+			done
+			
+			pkgs_src=$(find ./ -name *.src.rpm)
+			pkgs_rpm=$(find ./ -name *rpm|grep -v \.src\.)
+			
+			
+			for pkg in $pkgs_rpm;do
+				 cp ${pkg:2} repo/$(basename ${pkg:2})
+			done
+			for pkg in $pkgs_src;do
+				 cp ${pkg:2} repo-src/$(basename ${pkg:2})
+			done
+			for this in repo repo-src;do
+				cd $this
+				echo "Create repo for $this"
+				createrepo . > /dev/zero
+				cd ..
+				[ "" = "$(echo $this|grep src)" ] && \
+					addition="" || addition=" - SOURCE -"
+				cat > "$ROOT/$FAS-$this.repo" << EOF
+[FedoraPeople-$FAS$(echo $addition|sed s,\ ,,g)-devel]
+name=All$addition packages of $FAS@fedorapeople.org
+baseurl=http://$FAS.fedorapeople.org/$this
+enabled=1
+gpgcheck=0
+EOF
+			[ "$addition" = "" ] && \
+				REPO_OUT+="<li><a href=\"$FAS-$this.repo\">Repo</a></li>\n" || \
+				REPO_OUT+="<li><a href=\"$FAS-$this.repo\">Repo-Sources</a></li>\n<br>\n"
+			done
+			echo -e "<ol>\n$REPO_OUT\n</ol>\n\t\t</td></tr><tr><td align=center>" >> "$DEST"
+			let count++ # as it uses 2 cols
+		fi
+		
+		
+		echo -e "\t\t</td>" >> "$DEST"
+		let count++
+		[ $count -ge 2 ] && \
+			echo -e "</tr><tr>" >> "$DEST" && \
+			count=0
+	done
+	echo -e "</tr></table>" >> "$DEST"
+	
+	#if [ ! "" = "$(echo $LIST_PLAIN)" ] # Print total table, if all 'stable' packages are shown
+	#then	echo -e ""
+	#fi
+	
+
+
+	echo -e "<br>\n<hr width=80%>\n<br>\n<div>NOTE: All 'review-files' were automaticly generated (prior to this script, beta)\n<br>\n<p>$(basename $0) was written by $AUTHOR\n<br>\nTOOKTIME</p></div>\n</center>\n</body>\n</html>"  >> "$DEST"
+	TIME_END="$(date +'%s')"
+	TIME_END_AFTER="$(date +'%N')"
+# Trick cheat tweak hack
+	if [ $TIME_END_AFTER -ge $TIME_START_AFTER ]
+	then	THETIME="$[ $TIME_END - $TIME_START ].$[ ( 10000000 + $TIME_END_AFTER ) - ( 10000000 + $TIME_START_AFTER ) ]"
+	else	THETIME="$[ $TIME_END - $TIME_START ].$[ ( 10000000 + $TIME_START_AFTER ) - ( 10000000 + $TIME_END_AFTER ) ]"
+	fi
+	MESSAGE="Last update of data happend on $(date +'%Y.%m.%d %H:%M - %Z') and was done within $THETIME seconds\, using a BASH <a href=fh>script</a> <a href=$(basename $0)>combination</a>"
+	sed s,TOOKTIME,"$MESSAGE",g -i "$DEST"
+	sed s/"		\n"/""/g  -i "$DEST"
+	echo $MESSAGE

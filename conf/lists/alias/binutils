@@ -1,0 +1,3 @@
+alias a="awk"
+alias g="grep --color=auto"
+alias m="more"

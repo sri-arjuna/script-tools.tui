@@ -1,0 +1,37 @@
+#!/bin/bash
+# ---------------------------------------------------------------------------------------
+# | Project sea:	Package of small scripts for an easy set up of linux uses	|
+# | Description:	Sets an update intervall for cron				|
+# | Script by:		Simon A. Erat (sea)						|
+# | Contact:		http://forums.fedoraforum.org/member.php?u=183882	(sea)	|
+# | Date (created):	2011.09.30 ( year / month / day )				|
+# | Date (changed):	2011.10.04							|
+# | FileVersion:	0.2								|
+    seaAuthor=sea
+# | Resource:										|
+# ---------------------------------------------------------------------------------------
+# |
+# | sea cron update
+# |
+    if ! isROOT ; 
+    	then seaecho "This script should be run as root" && if
+    	ask "Do you want to login now?" ; then
+    	su -c "sea cron update" && echo && exit 0 ; else
+    	return 1 ; fi
+    fi
+    curfile=$seatt/cronjobs.tmp
+    cleanup $curfile
+# |
+# | Code
+    seaecho "Please select an intervall to update this computer."
+    select jetzt in hourly daily weekly monthly yearly ; do
+    	break
+    done
+# |
+# | Generate Command
+    cmdUpdate="@$jetzt $seat/cron/jobs/update.cronjob"
+    cronAdd "$cmdUpdate" "$curfile"
+    cronList
+# |
+# | Cleanup
+    cleanup $curfile

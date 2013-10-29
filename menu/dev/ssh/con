@@ -1,0 +1,42 @@
+#!/bin/bash
+#
+# 	sea's "dev prj ssh con" is aimed to assist developers to  
+# 	easy handle their multiple projects.
+#
+# 	This script is written with best intention to help, 
+# 	but there is NO warranty or garanty and I deny ANY responsiblity
+# 	that may or may not affect your system.
+#
+#
+# 	Lisence:        GPL v3
+# 	Author:         Simon A. Erat (sea)
+# 	Release Date:   2012 June 25
+# 	Changed Date:	2013.08.28
+  	script_version=0.3 
+#
+#
+#
+#	Title
+#
+	title=" sea's SSH Manager - Connect to host"
+	sT "$title ($script_version)"
+#
+#	Vars
+#
+	lbl=""
+	list=""
+#
+#	Figure label 
+#
+	for ar in $@
+	do	[ -f "$SEA_DEV_DIR/$ar/conf" ] && \
+			lbl="$ar" && break
+	done
+	[ "" = "$lbl" ] && lbl=$(PRJ_Select)
+#
+#	Display
+#
+	source "$SEA_DEV_DIR/$lbl/conf"
+	sE "Selected project:"	"$prj_name"
+	SSH_Connect $lbl
+	ReportStatus $? "Connected to $prj_name"

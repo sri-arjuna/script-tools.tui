@@ -1,0 +1,58 @@
+#!/bin/bash
+#
+#
+#
+#
+#
+#	Lisence:	GPL v3
+#	Description:	Imports gpg key for RedHat Enterprise Edition
+#	E-Mail:  	erat.simon@gmail.com	
+#	Date created:	2012.
+#	Date changed:	2012.
+	script_version=0.1
+#
+#	Title
+#
+	sT "GPG Key import handler for RedHat Enterprise ($script_version)"
+#
+#	Variables
+#
+	menuoptions="4 5 6"
+	args="$3 $4 $5"
+	release=""
+	for a in $args;do
+	tmp=$(echo $menuoptions|grep $a)
+	test ! "" = "$tmp" && release=$a
+	done
+#
+#	Subs
+#
+	rhel2keypath() { # RELEASEVER
+	#
+	#
+		out=""
+		test "" = "$1" && sE "Usage: rhel2keypath 4|5|6" && return 1
+		case $1 in
+		4)	key="db42a60e"	;;
+		5)	key="37017186"	;;
+		6)	key="fd431d51"	;;
+		esac
+		out="https://www.redhat.com/security/$key.txt"
+		echo "$out"
+	}
+#
+#	Menu
+#
+	if [ "" = "$release" ]
+	then	rel=$(cat /etc/system-release|awk '{print $3}')
+		if ask "Is $rel the release you want to import?"
+		then	release=$rel
+		else	sE "Please select your release:"
+			select release in $menuoptions;do break;done
+		fi
+	fi
+	
+	rpm --import $(rhel2keypath $release) && retval=0 || retval=1
+	test 0 -eq $retval && \
+		sE "Successfully imported F$release keys" "$SUCCESS" || \
+		sE "Could not import F$release keys" "$FAILURE"

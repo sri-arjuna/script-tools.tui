@@ -1,0 +1,67 @@
+#!/bin/bash
+#
+#
+#
+#
+#
+#	Date Created:	2013.02.25
+	script_version=0.1
+#
+#
+#	Root Check
+#
+	[ ! 0 -eq $UID ] && \
+		sE "You must be root to set up and install the system." && \
+		ask "Reload script as root?" && \
+			su -c "$0 $@" && \
+			return 0 || return 1
+#
+#	Title
+#
+	sT "sea's Setup and installation handler ($script_version)"
+#
+#	Variables
+#
+#	task_groups="langauge-time partitions repo-packages"
+	task_groups="usage setup content"
+	task_usage="language keyboard timezone internet"
+	task_part_type="mbr gpt"
+	task_part_editors="fdisk gdisk cfdisk"
+	task_part_mounts="root swap home opt var"
+	task_part_fs="ext2 ext3 ext4 xfs reiserfs vfat ntfs-3g"
+#
+#	Arrays
+#
+	ar_disk[]=""	# /dev/sda[0-9]
+	ar_mount[]=""	# /
+	ar_fs[]=""	# any of $task_part_fs
+	ar_size[]=""	# the targeted size
+	ar_label[]=""	# one word description
+	ar_format[]=""	# 0 = yes, 1 = no
+	ar_order[]=""	# create order
+	#ar_disk[]=""	# 
+#
+#	Subs
+#
+	
+#
+#	Menu
+#
+	for group in $task_groups;do
+		sT "$(Capitalize $group)"
+		case $group in
+		usage)		for task in $task_usage;do
+				case $task in
+				language)	echo	;;
+				keyboard)	echo	;;
+				timezone)	echo	;;
+				internet)	sE "At this moment, please run:" "st net stnm"
+						sE "in another terminal."
+						;;				
+				esac
+				done
+				;;
+		setup)		echo	;;
+		content)	echo	;;
+		esac
+	done

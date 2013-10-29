@@ -1,0 +1,59 @@
+
+# ------------------------------------------------------------------------------
+#	sea's Script Tools: The 3rd Generation
+#	File Description:	Provides the most important script functions inside 
+#						loading stage.
+#	Version:	0.2
+#	Author:		Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created:	2012.04.10
+#	Changed:	2013.08.28
+#	License:	GPL v3
+# ------------------------------------------------------------------------------
+#
+#	Variables
+#
+	cliWidth=$(tput cols) ; n=$cliWidth
+	strDateTime=$(date +'%Y.%m.%d-%H.%M.%S')
+#
+#	Subs
+#
+	log() { # STRING
+	# Prints the STRING to /tmp/sea-script-tools.log
+	#
+		logfile="$ST_CACHE_DIR/script-tools.log"
+		if [[ ! -f $logfile ]]
+		then	cat > $logfile << EOF
+First install Version: $stVer
+Kernel: $(uname -r)
+-----------------------------
+EOF
+			log "Created Logfile"
+		fi
+		echo "$BORDER_LEFT $strDateTime :: $@" >> $logfile
+	}
+	Evenize() { # STRING
+	# Checks if STRING is an even number
+	# If not, it adds an empty char at the end
+		tmpstr="$@"
+		len="${#tmpstr}"
+		[ $len = 0 ] && \
+			len=2
+		if [ ! "$len" = "$[ $len / ( $len * 2 )  ]" ]
+		then	echo "$@"
+				return 0
+		else	echo "$@ "
+				return 1
+		fi
+	}
+	Capitalize() { # STRING
+	# Makes first char capital
+	# by stevea & shorten by dd_wizard
+	   low=${1,,}
+	   echo ${low^}
+	}
+	CAPS() { # STRING
+	# Make all chars CAPS of provided string
+	#
+		high=${1^^}
+		echo ${high}
+	}

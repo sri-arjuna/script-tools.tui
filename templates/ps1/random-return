@@ -1,0 +1,65 @@
+#!/bin/bash
+#
+#	Variables
+#
+	source /etc/tui/colors.conf
+	export esc="\033"
+	#export RESET="${esc}[0m"
+	#export WHITEBG="${esc}[47m"
+	#export WHITEFG="${esc}[37m"
+	#export blackbg="${esc}[40m"
+	#export REDFG="${esc}[31m"
+	#export REDBG="${esc}[41m"
+	#export BLUEFG="${esc}[34m"
+	#export GREENBG="${esc}[42m"
+	#export greenfont="${esc}[32m"
+	export PROMPT_COMMAND='RET=$?;'
+	export RET_VALUE='$(echo $RET)'
+#
+#	Color
+#
+	rnd() { # MAX [ MIN=0 ]
+	# Returns a random number up to MAX, 
+	# or if provided, between MIN and MAX.
+		[ -z $1 ] && echo "Usage: rnd MAXNUMBER [MINVALUE]" && \
+				return 1 || max=$1
+		[ -z $2 ] && min=0 || min=$2
+		rnd=$RANDOM
+
+		while [ $rnd -gt $max ] && [ ! $rnd -lt $min ]; do rnd=$(($RANDOM*$max/$RANDOM)) ; done
+		echo $rnd
+	}
+	return_user_color() {
+	# Returns white background and red font for root
+	# Returns white background and blue font for users
+		[ 0 -eq $UID ] && echo "${WHITEBG}${REDFG}" || echo "${WHITEBG}${BLUEFG}"
+	}
+	return_status_color() { # $?
+	# returns the color values according to its return value
+	#
+		case "$1" in
+		0)	echo -ne "${GREENBG}${BLUEFG}"	;;
+		1)	echo -ne "${REDBG}${WHITEFG}"	;;
+		*)	echo -ne "${WHITEBG}${BLUEFG}"	;;
+		esac
+	}
+	return_status_string() { # $?
+	# returns random strings depending on provided numberic argument
+	# expect either 0 or 1, outputs number only otherwise
+		good=('+' ':)' '✔' )
+		bad=('-' ':(' '✘' )
+		num=$(rnd 2)
+		
+		if [ "$1" -eq 0 ]
+		then	echo "${good[$num]}"
+		elif [ "$1" -eq 1 ]
+		then	echo "${bad[$num]}"
+		else	echo "$1"
+		fi
+	}
+	export -f rnd return_user_color return_status_color return_status_string
+#
+#	PS1
+#
+	RET_RND='$(echo -e $(return_status_color $RET))$(echo -e $(return_status_string $RET))'
+	export PS1="$RET_RND${RESET} \w $(return_user_color)\\\$${RESET} "

@@ -1,0 +1,60 @@
+#!/bin/bash
+#	
+#	update Script, Mai 2nd 2012 by sea
+#	File requires:	chmod +x "upd"
+#	
+#	Simply lets you choose for fedora or grub to be updated
+#	
+#	This script is written with best intention to help, 
+#	but there is NO warranty and I deny ANY responsiblity
+#	that may or may not affect your system.
+#	
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea)
+#	Release Date:   2012.05.02
+#	Changed Date:	2013.08.25
+	script_version="0.4"
+#
+#	Help
+#
+	[ "-h" = "$1" ] && \
+		echo -e "$(basename $0) ($script_version)
+		\rUpdates your system
+		\rUsage: $(basename $0) [options]
+		\rWhere options are:
+		\r\t-h\tThis screen
+		\r\tg\tGrub2
+		\r\tme\tInstalled packages
+		\r" && exit 99
+#	
+#	Display
+#
+	source /usr/share/script-tools/st.cfg > /dev/zero
+	sT "sea's Easy update ($script_version)"
+	thisDist=$(distro|awk '{print $1}')
+	case $1 in
+	"g")	sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+		exit ;;
+	"me")	case $(isBased) in
+		arch)	sudo pacman -Syu 			;;
+		redhat)	sudo yum upgrade -y --skip-broken	;;
+		deb)	sudo apt-get upgrade -y			;;
+		esac
+		exit
+		;;
+	esac
+	
+	sE "What would you like to update? "
+	select CASE in $thisDist grub2 end
+	do	case $CASE in
+		$thisDist)	case $(isBased) in
+				arch)		sudo pacman -Syu 		;;
+				redhat)		sudo yum upgrade -y --skip-broken	;;
+				deb)		sudo apt-get upgrade -y	;;
+				esac
+				break
+				;;
+		grub2)		sudo grub2-mkconfig -o /boot/grub2/grub.cfg ;;
+		end)		break	;;
+		esac
+	done

@@ -1,0 +1,47 @@
+#!/bin/bash
+#
+#	Changes GRUB2 recovery toggle
+#
+#
+#	License:        GPL v3
+#	Author:         Simon A. Erat (sea)
+#	Release Date:   2012.06.04
+#	Changed Date:	2013.06.15
+	script_version=0.6
+#
+#	Title
+#
+	sT "sea's GRUB2 Recovery Option changer ($script_version)"
+	[ ! isRoot ] && sE "Requires root access!" "$WARN" && return 1
+#
+#	Font settings / Variables
+#
+	grubdir=/boot/grub2
+	grubfile=/etc/default/grub
+	tmpfile=/tmp/grub
+	current=$(grep GRUB_DISABLE_RECOVERY $grubfile|sed s/"="/" "/g|sed s/\"/' '/g|awk '{print $2}')
+#
+#	Action
+#
+	sE "Disabled Recovery is currently:" "$current"
+	[ true = $current ] && \
+		sE "" "'$current' means it hides recovery options" || \
+		sE "" "'$current' means it shows recovery options"	## :D
+	if ask "Do you want to change?"
+	then	[ true = $current ] && current=false || current=true
+		sE "Changing to" "$current"
+		repl="$(grep GRUB_DISABLE_RECOVERY $grubfile)"
+		if [ "" = "$(echo $repl)" ]
+		then	echo -e "GRUB_DISABLE_RECOVERY=\"$current\"" >> $grubfile
+		else	sed s/"$repl"/"GRUB_DISABLE_RECOVERY=\"$current\""/g -i $grubfile
+		fi
+		if [ $? -eq 0 ] 
+		then	sE
+			ask "Rebuild GRUB2?" && \
+			grub2-mkconfig -o /boot/grub2/grub.cfg > /dev/zero
+			return 0
+		fi
+		return 1
+	else	sE "" "$BACK"
+		return 0
+	fi

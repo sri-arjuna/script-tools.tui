@@ -1,0 +1,150 @@
+#!/bin/bash
+#
+#	sea's Script Tools: The 3rd Generation
+#
+#	Description:	NAS Mounter
+#			
+	script_version=1.0
+#	License:	GPL v3
+#	Created Date:   2012.05.02
+#	Changed Date:	2013.05.15
+#	Author: 	Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Resource:	  
+# 
+#	Script tools compatibility
+#
+	if [ ! -f /usr/share/script-tools/st.cfg ]
+	then	alias sT="echo"
+		alias sP="printf '\r'"
+		alias sE="echo"
+		SUCCESS="[ DONE :) ]"
+		FAILURE="[ FAILED :( ]"
+		PROGRESS="[ Working... ]"
+	else	[ -z $stDir ] && source /usr/share/script-tools/st.cfg
+	fi
+#
+#	Title
+#
+	thistitle=" sea's Network-Attached-Storage script tool"
+	sT "$thistitle ($script_version)"
+#	
+#	Variables
+#
+	action=menu
+	lbl=""
+	retval=99
+	needHelp=false
+	# \r\tc|connect\tConnect to share on NAS.
+	thisHelp="st net nas ($script_version)
+		\rỤsage: nas [ LABEL ] [-h|-c|-e|-s] [ m|u ]
+		\rInfo: This script requires root access to u/mount.
+		\r\t-h\tDisplays this screen
+		\r\t-c\tShows the credential file
+		\r\t-e\tEdit the configuration file
+		\r\t-s\tShows the configuration file
+		\r\tm|mount\tMount share from NAS to local.
+		\r\tu|umount\tUnmounts share.
+		
+		\rExit Status (from the last displayed):
+		\r\t0 \tOK
+		\r\t1 \tmissing rights
+		\r\t2 \tDevice Down
+		\r\t99 \thelp screen\n"
+#
+#	Check for argument
+#
+	if [ ! -z "$1" ]; then
+		for arg in $@;do
+			case ${arg:0:2} in
+			# Diffrent help options
+			[-]h)		needHelp=true	;;
+			[-]\?)		needHelp=true	;;
+			# Arguments:
+			[-]c)		action=showcred	;;
+			[-]e)		action=editconf	;;
+			[-]s)		action=showcfg	;;
+			u|umount|unmount) action=umount ;;
+			m|mount)	action=mount	;;
+			# c|connect)	action=connect	;;
+			esac
+			[ -d "$SEA_NAS_DIR/$arg" ] && lbl="$arg"
+		done
+	fi
+#	
+#	Show Help and Exit?
+#
+	[ $needHelp = true ] && echo -e "$thisHelp" && exit $retval
+	[ ! isRoot ] && echo -e "$thisHelp" && exit $retval
+#
+#	Execute Arguments
+#
+	if [ ! $action = menu ] &&  [ "" = "$lbl" ]
+	then	sP "Looking for NAS entries..." "$WORK"
+		if [ "" = "$(ls $SEA_NAS_DIR)" ]
+		then	NAS_New
+		fi
+		lbl=$(NAS_Select)
+	fi
+		
+	[ -z $lbl ] && sP "Please select a label to work with:" && lbl=$(NAS_Select)
+	if [ "" = "$(echo $lbl)" ] 
+	then	NAS_New 
+		ask "Restart: $0 $@?" && \
+			$0 $@ && \
+			return 0 || return 1
+	fi
+	source "$SEA_NAS_DIR/$lbl/conf"
+#	
+#	Display
+#
+	A="Change selected NAS"
+	B="Add another NAS"
+	C="Edit Config ($lbl)"
+	D="Mount $lbl?"
+	E="Unmount $lbl?"
+	F="Copy a configuration"
+	temp_title="$(Capitalize $lbl) on $(Capitalize $nas_dev_name)"
+	if [ $action = menu ]
+	then	[ "$lbl" = "" ] && \
+			sP "Please select a NAS entry" && \
+			lbl=$(NAS_Select) && \
+			ReportStatus 0 "Selected project: $( [ ! "" = "$(echo $lbl)" ] && echo $lbl || echo '<none>')" || \
+			ReportStatus 0 "Selected project: $lbl"
+		menu=menu
+		while [ ! "$menu" = Back ]
+		do	sT "$temp_title"
+			A="Change selected NAS"
+			B="Add another NAS"
+			select menu in Back "$A" "$B" "$C" "$D" "$E" "$F"
+			do	sT "$temp_title"
+				case $menu in
+				"$A")	new=$(NAS_Select)
+					source "$SEA_NAS_DIR/$new/conf"
+					C="Edit Config ($lbl)"
+					D="Mount $lbl?"
+					E="Unmount $lbl?"
+					temp_title="$(Capitalize $lbl) on $(Capitalize $nas_dev_name)"	;;
+				"$B")	NAS_New			;;
+				"$C")	NAS_Edit_Conf $lbl	;;
+				"$D")	NAS_Mount $lbl		;;
+				"$E")	NAS_Umount $lbl		;;
+				"$F")	NAS_Copy_Conf		;;
+				esac
+				break
+			done
+		done
+	elif [ -f "$SEA_NAS_DIR/$lbl/conf" ]
+	then	source "$SEA_NAS_DIR/$lbl/conf"
+		case $action in
+		showcfg)	tFile="$SEA_NAS_DIR/$lbl/conf"
+				sE "$lbl configuration and credentials for mount:" "$tFile"
+				while read line; do sE "$line" ;done < "$tFile"			;;
+		showcred)	tFile="$SEA_NAS_DIR/$lbl/cred"
+				sE "$lbl credentials for samba:" "$tFile"
+				while read line; do sE "$line" ;done < "$tFile"			;;
+		editconf)	NAS_Edit_Conf $lbl		;;
+		mount)		NAS_Mount $lbl			;;
+		umount)		NAS_Umount $lbl			;;
+		esac
+	else	ReportStatus $? "Error st net nas : 136"
+	fi

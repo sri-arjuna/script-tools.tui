@@ -1,0 +1,100 @@
+#!/bin/bash
+#
+#	Default directories, August 1st 2011 by sea
+#
+#	This script is written with best intention to help, 
+#	but there is NO warranty and I deny ANY responsiblity
+#	that may or may not affect your system.
+#
+#	Lisence:		GPL v3
+#	Author:			Simon A. Erat (sea)
+#	Date Created:		2011.08.01
+#	Date Changed:		2013.06.21
+	script_version="1.0"
+#
+#	Title
+	sT "sea's implemention and addition of default dirs ($script_version)"
+#
+# 	Variables
+	varList="
+		XDG_HOME_DIR
+		XDG_DESKTOP_DIR
+		XDG_CONFIG_DIR
+		XDG_DOCUMENTS_DIR
+		XDG_PROJECT_DIR
+		XDG_MUSIC_DIR
+		XDG_PICTURES_DIR
+		XDG_VIDEOS_DIR
+		XDG_CLOUD_DIR
+		XDG_DOWNLOAD_DIR
+		XDG_PUBLICSHARE_DIR
+		XDG_WEB_DIR
+		XDG_TEMPLATES_DIR
+		"
+	addVars=""
+	toAdd=""
+	addString="#!/bin/bash\n# XDG default directories file, created by Script-Tools $stVer : $(date)"
+	thisCfg="$HOME/.config/user-dirs.dirs"
+
+	sE "Please note:" "Eventhough this script is based on my preferences, it lets you easy change its values."
+
+	A="Add to bookmarks"
+	B="Check defaults"
+	select menu in Back "$A" "$B" 
+	do	[ "$menu" = Back ] && return
+		case "$menu" in
+		"$B")	for defDir in $varList
+			do	sP "Parsing: $defDir" "$WORK"
+				case $defDir in
+				XDG_HOME_DIR)		def="$HOME"	;;
+				XDG_CONFIG_DIR)		def="$XDG_HOME_DIR/.config"		;;
+				XDG_DESKTOP_DIR)	def="$XDG_HOME_DIR/priv/Notes"		;;
+				XDG_DOCUMENTS_DIR)	def="$XDG_HOME_DIR/priv/Docs"		;;
+				XDG_CLOUD_DIR)		def="$XDG_HOME_DIR/priv/Cloud"		;;
+				XDG_PROJECT_DIR)	def="$XDG_HOME_DIR/priv/Projects"	;;
+				XDG_TEMPLATES_DIR)	def="$XDG_HOME_DIR/priv/Templates"	;;
+				XDG_MUSIC_DIR)		def="$XDG_HOME_DIR/med/music"		;;
+				XDG_PICTURES_DIR)	def="$XDG_HOME_DIR/med/pics"		;;
+				XDG_VIDEOS_DIR)		def="$XDG_HOME_DIR/med/vids"		;;
+				XDG_DOWNLOAD_DIR)	def="$XDG_HOME_DIR/net/dls"		;;
+				XDG_PUBLICSHARE_DIR)	def="$XDG_HOME_DIR/net/Public"		;;
+				XDG_WEB_DIR)		def="$XDG_HOME_DIR/net/web"		;;
+				*)			def=""					;;
+				esac
+		
+				line="$(grep $defDir $thisCfg)"
+				if [ "" = "$(echo $line)" ] && [ ! "" = "$def" ]
+				then	if ask "No entry for $defDir found, add one?"
+					then	if ask "Do you want to use this suggestion ($def) for $defDir?" 
+						then	export $(echo $defDir)=$def 
+							sE
+							str="$def" 
+							def=""
+						else	str=$(input "Please enter absolute paths, or it will reset to default! : ")
+						fi
+						echo "$defDir=\"$str\"" >> "$thisCfg" 
+					fi
+				else	current="$(ReadiniLine $(grep $defDir $thisCfg))"
+					sE "This is the value of: $defDir" "$(echo $current|awk '{print $2}'|sed s/\"/\ /g)"
+					if ask "Change it?"
+					then	newPath=$(input "Please type the absolute path (eg: $HOME/...): ") 
+						sed s\\"$line"\\"$defDir=$newPath"\\g -i "$thisCfg" && \
+							sE "Added $newPath as $defDir." "$DONE" || \
+							sE "Failed to change." "$FAILE"
+					fi
+				fi
+			done
+			;;
+		"$A")	for defDir in $varList
+			do	current="$(ReadiniLine $(grep $defDir $thisCfg)|awk '{print $2}')"
+				sP "Parsing $defDir with $current" "$WORK"
+				if [ "" = "$(grep $current $XDG_HOME_DIR/.gtk-bookmarks)" ]
+				then	ask "Add $current to bookmarks?" && \
+						newlbl=$(input "What is its new label?") && \
+						echo "file://$current $newlbl" >> $XDG_HOME_DIR/.gtk-bookmarks
+				else	sE "$defDir is already saved with $current" "$DONE"
+				fi
+			done
+			;;
+		esac
+	done

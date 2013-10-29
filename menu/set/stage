@@ -1,0 +1,5 @@
+#!/bin/bash
+if [ -d /etc/systemd ]
+then	source $SEA_CLI_DIR/set/stage.target
+else	source $SEA_CLI_DIR/set/stage.old
+fi

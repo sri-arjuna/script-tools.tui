@@ -1,0 +1,99 @@
+#!/bin/bash
+#
+#	sea's Script Tools: The 3rd Generation
+#	File Description:	Handle Login Manager things - GDM
+	script_version=0.2
+#	Author:		Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created:	2013.07.26
+#	Changed:	2013.07.26
+#	License:	GPL v3
+#	Resource:	https://help.gnome.org/admin/gdm/3.1/configuration.html.de
+#
+#	Title
+#
+	sT "sea's GDM Background Image Chooser ($script_version)"
+	#test ! isRoot && ReportStatus 1 "Requires root rights..." #&& return 1
+#
+#	Vars
+#
+	tmp=""
+	current=""
+	img=""
+	conf="/usr/share/gnome-shell/theme"
+	tFile="$conf/noise-texture.png"
+	current="$(grep "#lockDialogGroup" -A2 $conf/gnome-shell.css|grep ground:|grep url|awk '{print $3}')"
+	current="${current:4: ${#current} - 6 }"
+	[ "$(basename $current)" = "noise-texture.png" ] && \
+		tmp="$(ls -l $current|awk '{print $11}')" && \
+		[ ! "" = "$tmp" ] && current="$tmp"
+	defaultpath="/usr/share/backgrounds"
+	list_hdir=""
+	thisHelp="bg ($script_version)
+		\rUsage:\tst set lm gdm bg [/PATH/FILE]
+		\r\tCurrently known supported formats: png
+		\r\t-h\tShows this screen
+		\r\t-r\tRestores original background
+		"
+#
+#	One liners
+#
+	#for d in $(ls "$XDG_HOME_DIR"); do [ -d "$XDG_HOME_DIR/$d" ] && list_hdir="$list_hdir ${d}";done
+	[ -d "$HOME/.backgrounds" ] && list_hdir+=" $HOME/.backgrounds"
+#
+#	Arguments
+#
+	if [ ! -z $5 ] 
+	then	if [ "-h" = "$5" ] 
+		then	echo -e "$thisHelp"
+			return 99
+		elif [ "-r" = "$5" ]
+		then	sudo ln -sf "$tFile.org" "$tFile" 
+			ReportStatus $? "Restored original background."
+			return
+		elif [ -f "$5" ] 
+		then	img="$5"
+		else	echo -e "$thisHelp"
+			return 99
+		fi
+	fi
+#
+#	Display
+#
+	[ ! -f "$conf/gnome-shell.css" ] && \
+		ReportStatus 1 "GDM conf file ($conf/gnome-shell.css) not found" && \
+		return 1
+	sE "Current background:" "$(echo ${current})"
+	! isRoot && ReportStatus 1 "Requires root access" && return 1
+	sE "Please select a folder to search for images"
+	[ $defaultpath = /usr/share/backgrounds ] && test -d $defaultpath || defaultpath=""
+	select thispath in Back $XDG_PICTURES_DIR $list_hdir $defaultpath other;do 
+		[ Back = $thispath ] && return 6 || break;done
+	#
+	#	Fail & custom ;)
+	#
+	if [ "other" = "$thispath" ]
+	then	thispath=$(input "Please type the complete path: ")
+	fi
+	#
+	#	Retrieve files
+	#
+	if [ "" = "$img" ]
+	then	images=$(find $thispath/ -name *png )	#*.svg|*.png
+		if [ ! "" = "$images" ]
+		then	sP "Please select an image:"
+			select img in $images ;do 
+				sE "Selected image: $img" 	"$SUCCESS"
+				break
+			done
+		else	sE "Sorry, no images found in $thispath." "$FAILURE"
+			return 1
+		fi
+	fi
+	# 
+	#	Change it
+	#
+	[ -f "$tFile" ] && [ ! -h "$tFile" ] && mv "$tFile" "$tFile.org"
+	sudo ln -sf "$img" "$tFile"
+	#ls -l "$tFile"
+	ReportStatus $? "Changed login background to $(basename $img)"
+	

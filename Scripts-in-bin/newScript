@@ -1,0 +1,88 @@
+#!/bin/bash
+#
+#	sea's Script Tools: The 3rd Generation
+#
+#	Description:	
+#			
+	script_version=0.3
+#	License:	GPL v3
+#	Created:	2013.05.04
+#	Changed:	2013.07.21
+#	Author: 	Simon A. Erat (sea) <erat.simon AT gmail.com>
+#
+#	Vars
+#
+	#[ -z $1 ] && echo "Usage: $0 FILENAME" && exit 1
+	[ -z $stDir ] && source /usr/share/script-tools/st.cfg && source /home/$USER/.config/user-dirs.dirs
+	[ -f $HOME/bin ] && thisdir=$XDG_HOME_DIR/bin || thisdir=$(pwd)
+	[ ! -z $SEA_SCRIPT_DIR ] && thisdir=$SEA_SCRIPT_DIR
+	OUTPUTFILE="$thisdir/$1"
+	beSmall=false
+	needHelp=false
+	thisUser="$default_user"
+	thisEmail="$default_email"
+#
+#	Args
+#
+	for arg in $@;do 
+		[ "-s" = "$arg" ] && beSmall=true 
+		[ "-h" = "$arg" ] && needHelp=true 
+	done
+#
+#	Display
+#
+	tmp=$1
+	[ -z $1 ] || [ "-" = "${tmp:0:1}" ] || [ "true" = "$needHelp" ] && \
+		echo -e "\nnewScript ($script_version)
+		\rUsage: newScript FILENAMEtoCREATE [ -s ]
+		\r\t-h\tPrints this screen
+		\r\t-s\tPrints only header
+		" && exit 99
+	sT "Creating new Script $1"
+	touch $OUTPUTFILE
+	ReportStatus $? "Created $OUTPUTFILE"
+	sP "Generating header..."
+	today="$(date +'%Y.%m.%d')"
+	
+	case "$beSmall" in
+	"true") 	cat >> "$OUTPUTFILE" << EOF
+#!/bin/bash
+#
+#	Desription:	
+#	Lisence:        GPL v3
+#	Author:         $thisUser ; < $thisEmail >
+#	Created:	$today
+#	Changed:	$today
+	script_version=0.1
+#
+#	Title
+#
+	title=""
+	sT "\$title (\$script_version)"
+#
+#	Variables
+#
+	
+#
+#	Display
+#
+	
+EOF
+			;;
+	"false")	cat >> "$OUTPUTFILE" << EOF
+#!/bin/bash
+#
+#	Desription:	
+#	Lisence:        GPL v3
+#	Author:         $thisUser ; < $thisEmail >
+#	Created:	$today
+#	Changed:	$today
+	script_version=0.1
+#
+EOF
+			cat /usr/share/script-tools/Script-Core/Templates/header >> "$OUTPUTFILE"
+			;;
+	esac
+	ReportStatus $? "Created $OUTPUTFILE"
+	chx "$OUTPUTFILE"
+	sEdit "$OUTPUTFILE" || vi "$OUTPUTFILE"

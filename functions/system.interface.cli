@@ -1,0 +1,411 @@
+
+# ------------------------------------------------------------------------------
+# | sea's Script Tools: The 3rd Generation
+# | File Description:	Handles the cli output of the scripts
+# | Author:		Simon A. Erat (sea) <erat.simon AT gmail.com>
+# | Created (y.m.d):	2012.04.10
+# | Changed:		2013.08.13
+# | License:		GPL v3
+# | Modified By:		
+# | Resource:		
+# | Special Thanks:	
+# ------------------------------------------------------------------------------
+# | Title
+	
+# |
+# | Variables
+	
+# |
+# | One Liners
+	
+# |
+# | Subs
+	sS() { # LIST OF WORDS "OR STRINGS"
+	# Lets the user easy choose from a list or an array. Echo's the selected item and returns 0.
+	# Returns 1 for cancel|skip|back
+	#
+	#	Verify there is at least one argument,
+	#	check if its only one and if so, 
+	#	echo and return success.
+	#
+		[[ -z "$1" ]] && sE "Usage: " "sS LIST OR ARRAY" && return 1
+		[[ -z "$1" ]] && [[ ! -z "$2" ]] && echo "$1" && return 0
+	#
+	#	Reset counters and tempfile
+		#
+		C=-1 ; I=0
+		echo > /tmp/sea-select
+	#
+	#	Create the selection menu, 
+	#	counting the entries of the tempfile
+	#
+		for a in Cancel "$@"
+		do	if [ -f $a ]
+			then	tCheckVar=f
+			elif [ -d $a ]
+			then	tCheckVar=d
+			else	((C++))
+				((I++))
+				case $I in
+				2)	sE "$numa) $tmp" "$a ($C"
+					sE "$numa) $tmp" "$a ($C" >> /tmp/sea-select
+					tmp="" ; I=0 
+					;;
+				1)	tmp="$a" ; numa=$C
+					;;
+				esac
+			fi
+		done
+	#
+	#	Follow up check to see 
+	#	if some value is remaining
+	#
+		[[ ! "" = "$tmp" ]] && \
+			sE "$numa) $tmp"
+		#
+		#	Preparing the menu appearance
+		#
+			howmanychars=${#C}
+			read -n$howmanychars -p "$BORDER_LEFT Your choice: " choice
+		sE "Your choice: "	"$choice"
+	#
+	#	Parsing the input
+	#
+		C=0
+		for a in "$@"; do 
+			test "$choice" = "$C" && \
+				clear && echo "$a" && return 0
+			((C++))
+		done
+		return 1
+	}
+	sGetDefaults() { # PATH
+	# Returns (a list) of the default.* files in provided PATH
+	# Returns 0 if found, 1 if no files found.
+		test "" = "$1" && sE "Usage:" "sGetDefaults $stDir/UI_CLI" && return 1
+		list="$(ls $1/default.*)" > /dev/zero || return 1
+		for l in $list;do
+			echo ${l:${#1}+9}
+		done
+		return 0
+	}
+	sea_select() { # LIST OR "Several Strings" OR WORDS
+	# Same as sS, but less output and therefore working.
+	#
+	[[ -z "$1" ]] && sE "Usage: " "sS LIST OR ARRAY" && return 1
+	[[ ! -z "$1" ]] && [[ -z "$2" ]] && echo "$1" && return 0
+	select choice in Back "$@"
+	do	if [ "Back" = "$choice" ]
+		then	echo "" 
+			return 1
+		else	echo "$choice"
+			return 0
+		fi
+	done		
+	}
+	sMenu() { # PATH
+	# Display content of PATH, if exists, using default.PATH as menu handler
+	# If exists, display "default.info".
+		strDirName="$(basename $1)" || return 1
+		[[ -z $1 ]] && sE "Error, call: " "sMenu /path/\$to/directory" && return 1
+		[[ ! -d "$1" ]] && sE "Error, path must exist: $1" "$FAILURE"	&& return 1
+		[[ -f $1/default.$strDirName ]] && source "$1/default.$strDirName" && return 0
+		[[ -f $1/default.info ]] && while read line; do sE "$line" ;done < $1/default.info
+		dirlist=$(ls $1|grep -v "\.")
+		contentDirs=""
+		contentFiles=""
+		for each in $dirlist ;  do [ -d "$1/$each" ] &&  contentDirs="$contentDirs $each" ;done 
+		for each in $dirlist ; do [ -f "$1/$each" ] && contentFiles="$contentFiles $each";done 
+
+		select entry in Back $contentDirs $contentFiles #dirlist back
+		do 	if [ Back = $entry ] 
+			then	ReportStatus 6
+				exit 6
+			else	sE "Selected:" "$entry"
+				if [[ -f $1/$entry ]]
+				then	source "$1/$entry"
+					ReportStatus $?
+					sH "Press enter to see the menu"
+				else	sMenu "$1/$entry"
+					ReportStatus $?
+					sH "Press enter to see the menu"
+				fi
+			fi
+		done
+		return $?
+	}
+	sE() { # "Arg one" "Arg two" ...
+	# Prints the arguments to the console, end with an \\n(ewline)
+	# sea echo
+		sP "${@}"
+		printf "\n"
+	}
+	sP_beta() { # Arg one "two two" $(echo $[2+1])
+	# Shows an embeded output line 
+	# with up to 4 horizontal lines.
+	#
+	#	Variables
+	#
+		# FIND BETTER CODE TO MATCH and FIX UNEVEN LINES
+		lenCLI=$[ $(tput cols) - 3 ]
+		i=1;EMPTY=""
+		lenArgs=0
+		nrArgs=0
+	#
+	#	Get an empty space string for 
+	#	the coplete width of the console
+	#
+		while [ $i -le $lenCLI ] ; do
+			((i++))
+			EMPTY="$EMPTY "
+		done
+		num=$[ ${#BORDER_LEFT} + ${#BORDER_RIGHT} + 2 ]
+		EMPTY="${EMPTY:$num}"
+	#
+	#	Get argument information
+	#
+		for entry in "${@}";do 
+			lenCount="${#entry}"
+			#
+			#	Check if current argument is less/equal than available space
+			#	If not, start 'loop'
+			#
+			if [ $lenCount -le ${#EMPTY} ]
+			then	((nrArgs++))
+				lenArgs=$[ $lenArgs + $lenCount ]
+				list_args[$nrArgs]="$entry"
+			else	sE "${entry:0:$[ $lenCount / 2 ]}" "${entry:$[ $lenCount / 2 ]}"
+			fi
+		done 
+	#
+	#	Subtract Arguments width from EMPTY line
+	#
+		if [ "" = "$3" ]
+		then	str="$1$2" ; empty="${#str}"
+			empty=0
+		else	empty=$[ ${#EMPTY} / ( $nrArgs - 1 ) * ( $nrArgs - 2 )  ]
+			#str="$@" ; empty="${#str}"
+			#
+			# CASE BLOCK ??
+			#
+		fi
+		empty="${EMPTY:$empty}"
+		empty="${empty:$lenArgs}"
+	#
+	#	Generate output string and check for output lenght !
+	#	Multi-line-check-!loop
+	#
+		if [ $lenArgs -le ${#empty} ] 
+		then	#checkval=$[  ]
+			case $nrArgs in
+			0|"")	str="$empty"	;;
+			1)	str="$1$empty "	;;
+			2)	str="$1$empty$2" ;;
+			3)	str="$1${empty:1}$2${empty:0}$3"		;;
+			4)	str="$1${empty:2}$2${empty:2}$3${empty:2}$4"	;;
+			5)	str="$1${empty:1}$2${empty:1}$3${empty:1}$4$empty$5" ;;
+			esac
+			printf "\r$BORDER_LEFT $str $BORDER_RIGHT"
+		fi
+	}
+	sP() { # "Arg one" "Arg two" ...
+	# Prints the arguments to the console, without an ending \\n(ewline)
+	# sea printf
+		lentotal=$cliWidth
+		bl=$BORDER_LEFT
+		br=$BORDER_RIGHT
+		MultipleLines=false
+		lenborders=$[ ${#bl} + ${#br} ]
+		output=""
+		
+		nrArg=0 
+		lenArgs=0
+		for entry in "$@";do ((nrArg++));lenArgs=$[ $lenArgs + ${#entry} ];done
+		
+		SPACE=""
+		SPACE_NR=$[ $lentotal - $lenborders - $lenArgs - 2 ]
+		for ((i=0;i<=$SPACE_NR;i++)) ; do SPACE="$SPACE "; done
+		lenLeft="$[ $lentotal - $lenborders]"
+		compareLeft=$[10000+$lenLeft]
+		compareArgs=$[10000+$lenArgs]
+		if [[ "$compareLeft" > "$compareArgs" ]]
+		then	# everything matches on 1 line
+			SPACE_ARG=${SPACE:(${#@})}
+			s="$SPACE"
+			sa="$SPACE_ARG"
+			ss=0
+			str=""
+			[[ "4" < "$nrArg" ]] && ss="${s:${#s}/($nrArg-1)}" && \
+			test "0" = "$ss" && ss="${sa:${#sa}/($nrArg-1)}" #|| echo $ss
+			t=${ss:2}
+			case "$nrArg" in
+			"0")	str="${s:1}"				;;
+			"1")	str="$1${s:1}"				;;
+			"2")	str="$1${s:1}$2"			;;
+			"3")	str="$1${t:1}$2${t:1}$3"		;;
+			"4")	str="$1${t:1}$2${t:1}$3${t:1}$4"	;;
+			*)	 # Every further argument is low priority and BETA
+				for e in "$@"
+				do  add="${t:1}$e"
+					test "" = "$str"	&& \
+						 str="$e"	   || \
+						 str="$str$add"
+				done
+				;;
+			esac
+		else	# more than 1 line is required
+			t="$@"
+			if [[ "0" = "${#t}" ]]
+			then	printf "\r$bl $SPACE$br"
+			else	#sP "more than 1 line? # TODO " # TODO
+				case $# in
+					"1")	left=${t:0:${#t}/2}
+					right=${t:${#t}/2}
+					sP "$left" "$right"
+					;;
+					"2")	sE "$1" "  "
+					sP "  " "$2"	
+					;;
+					"3")	sE "$1" "$2"
+					sP "  " "$3"	
+					;;
+					"4")	sE "$1" "$2"
+					sP "$3" "$4"	
+					;;
+					else)	sE "$1" "$2"
+					sE "$3" "$4"	
+					sE "$5" "$6"	
+					sP "$7" "$8"	
+					;;
+				esac
+			fi
+			return 1
+		fi
+		printf "\r$bl $str $br"	
+	}
+	sP_new() { # Arg one "two three" $(echo $[2+2])
+	# Shows an embeded output line 		NEW
+	# with up to 4 horizontal lines.
+		output="" ; i=1
+		bl="$BORDER_LEFT" 	;	br="$BORDER_RIGHT"
+		available=$[ $(tput cols) - ${#bl} - ${#br} - 2 ]	# 2 is the fix 'inlay'
+		available_space=$(while [ $i -le $available ];do ((i++));printf " ";done)
+		case $# in
+		0)	printf "\r$bl $available_space $br"	;;
+		1)	one="$1"
+			printf "\r$bl $one${available_space:${#one}} $br"	;;
+		2)	one="$1" ; two="$2"
+			printf "\r$bl $one${available_space:${#one}+${#two}}$two $br"	;;
+		3)	one="$1" ; two="$2" ; three="$3"
+			#available_space="${available_space:${#one}+${#two}+${#three}}"
+			#printf "\r$bl $one${available_space:${#one}+${#three}}$three $br"
+			sP "$one" "$three"
+			printf "$two" # at CENTER of line
+			;;
+			
+		esac
+	}
+	#sP_new "test" "blub" "yeah" ; printf "\n" ; exit
+	
+	sT() { # "TITLE"
+	# Replaces current line with a centred an colored headline/title
+	# sea Title
+		[[ -z $1 ]] && sE "Error, call: "  "sT TITLE ; sT \"Some specific title\""
+		SPACE=""
+		out=$@ ; len="${#out}"
+		A=$[ $(tput cols) % 2 ]
+		B=$[ $len % 2 ]
+		[ ! $A -eq $B ] && out+=" "
+		tmpstring="$BORDER_LEFT $out $BORDER_RIGHT"
+		SPACE_NR=$[ $(tput cols) -  2 ]
+		for ((i=0;i<=$SPACE_NR;i++)) ; do SPACE="$SPACE "; done
+		freespace=${SPACE:${#tmpstring}}
+		freespace=${freespace:(${#freespace}/2)}
+		printf "\r$BORDER_LEFT${seatitle}"
+		printf "$freespace $out $freespace"
+		printf "${reset}$BORDER_RIGHT\n"
+	}
+	sH() { # [Title]
+	# Display a short one line system information, creates a 2nd line if optional title doesnt match on the same line.
+	# sea Head-bar
+		#clear
+		distname=$(echo $(distro)|awk '{print $1}')
+		left="$distname : Script Tools $stVer : $(whoami) ($UID)"
+		printf "\r$seaColor"
+		[ ! "" = "$1" ] && title="$@ : " || title=""
+		compare=$[ ${#left} + ${#title} + 3 + ${#strDateTime} ]
+		
+		if [ $compare -lt $(tput cols) ]
+		then	sP "$left" "$title$strDateTime"
+		else	sE "$left" " "
+			sP " "	"$title$strDateTime"
+		fi
+		
+		printf "$reset\n"
+	}
+	liner() { #
+	# Prints a "\$DIV_H" (default: - ) until line is full
+	#
+		printf "\r"
+		for ((i=1;i<=$(tput cols);i++))
+		do 	printf "$DIV_H" 
+		done
+		printf "\n"
+	}
+	press() { # 
+	# Prints a line
+	# Ask the user to press enter to continue
+		#line="" ; echo -e "\r-------------------------"
+		#read -p   "Press [ENTER] to continue" nothing
+		msg="Press [ENTER] to continue"
+		sP "$msg" "$msg"
+		read nothing
+	}
+	sInst() { # PACK AG ES
+	# Installs the PACKAGES, returns 0 for success, 1 otherwise
+	# Reckognizes: Arch Linux, All Debian & Red Hat based Linux
+		cmdline=""
+		#
+		#	Set the command line installation
+		#	according to the linux distributor.
+		#	And remove known temporary files,
+		#	if exist
+		#
+		case $(isBased) in
+		"arch")		cmdline="pacman -IY $@"
+					;;
+		"debian")	cmdline="apt-get install -y $@"
+					;;
+		"redhat")	cmdline="yum install -y --skip-broken --nogpgcheck $@"
+					[ -f /var/run/yum.pid ] && sudo rm -f /var/run/yum.pid
+					;;
+		"unkown")	sE "Dont know your system ($distro)" "Cant install: $@"  && \
+					return 1
+					;;
+		esac
+		#
+		#	Perform installation
+		#	and exit 
+		#
+		sudo $cmdline 	&& retval=0 || retval=1
+		ReportStatus $retval "$@"
+		
+		test "$SUCCESS" = "$retval" && return 0 || return 1
+	}
+	sEdit() { # PATH/to/FILE
+	# Checks if $XDG_CURRENT_DESKTOP is refering to a DE/GUI
+	# If empty, assuming its text-mode
+		theEd=""
+		if [ xterm = $TERM ] || [ ! "" = "$DESKTOP_SESSION" ] || [ ! "" = "$XDG_CURRENT_DESKTOP" ]
+		then	theEd=$editor_gui #|| theEd=$editor_gui "$1"
+		else	theEd=$editor_cli # || sudo $editor_cli "$1"
+		fi
+		
+		sP "Edit file: $1" "$PROGRESS"
+		$theEd "$1" || sudo $theEd "$1"
+		
+		[ 0 -eq $? ] && \
+			sE "Closed file: $1" "$SUCCESS" || \
+			sE "Could not open file: $1" "$FAILURE"
+	}
+	

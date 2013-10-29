@@ -1,0 +1,30 @@
+#!/bin/bash
+#
+#
+#	Description:	Prints a descending sorted list of the time the services required
+# 	Changed by:	sea
+#	File created:	2012.09.28
+#	File changed:	2013.08.26
+	script_version=0.2
+#
+#
+	[ "-h" = "$1" ] && \
+		echo -e "$0 ($script_version)
+		\rChangeMod +x for files available in . or \$PATH
+		\r" && exit 99
+	F="$1"					# File to work with
+	FN="$(basename $1)"
+	list=$(echo $PATH|sed  s/':'/' '/g)	# Split up $PATH
+	for L in $list;do			# Looking for existence of file in $PATH
+		[ -f "$L/$FN" ] && \
+			F="$L/$FN" && break	# If file is found, break parsing
+	done
+	
+	if [ -f "$F" ] || [ -f "$1" ]		# File found & Exist?
+	then	chmod +x "$F"			# Change Mod or break out of if statement
+		echo "+x $FN :)" || break	# Display if successfully changed
+		exit 0				# Done
+	fi
+	# Either file was not found or no permission
+	echo "-x $FN :("			# Display if failed to chang
+	exit 1					# Failed

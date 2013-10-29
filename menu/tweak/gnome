@@ -1,0 +1,32 @@
+#!/bin/bash
+#
+#
+#
+#
+	script_version=0.1
+#
+#	Title
+#
+	title="sea's Gnome tweak preparation"
+	sT "$title ($script_version"
+#
+#	Variables
+#
+	requires="gnome-tweak-tool gnome-shell-theme-*"
+	todo="$requires"
+#
+#	Display
+#
+	#for req in $requires
+	#do	sP "Parsing $req" "$WORK"
+	#	if ! isInstalled $req 2>&1 > /dev/zero 
+	#	then	todo+=" $req"
+	#	fi
+	#done
+	if  which gnome-tweak-tool 2>&1 |grep -v which #> /dev/zero
+	then	ReportStatus $? "Nothing to do"
+	else	ReportStatus $? "Missing: $todo"
+		ask "Do you want to install $todo?" && \
+			sInst $todo
+		ReportStatus $? "Installed $todo"
+	fi

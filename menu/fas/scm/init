@@ -1,0 +1,64 @@
+#!/bin/bash
+#
+#	Variables
+#
+	
+	cd $XDG_SCM_DIR 	# Added to ~/.config/user-dirs.dirs
+	export EDITOR=$editor_cli
+	bzid="" ; msg="" ; C=0
+	COMMIT_SHORT_LEN=7
+	COMMIT_SHORT=""
+	COMMIT_LONG=`echo $(git log|grep commit|awk '{print $2}')`
+	[ -z $5 ] && \
+		select lbl in $(PRJ_List);do source $SEA_DEV_DIR/$lbl/conf;break;done || \
+		lbl=$5
+	[ -z $bzid ] && \
+		bzid=$(input "Enter the id:") && \
+		echo "bzid=$bzid" >> $SEA_DEV_DIR/$lbl/conf
+#
+#	Clone it
+#
+	
+	fedpkg clone $prj_name
+	cd $prj_name
+#
+#	Prepare empty git repo
+#
+	echo -e "*~\n*.rpm\n*.tar*\nresults_*/" >  .gitignore
+	git add .gitignore
+	git commit -m"Initial import. (#$bzid)"
+#
+#	Import SRPM
+#
+	fedpkg import $(echo $(ls $outputdir/$prj_file*src.rpm)|awk '{print $1}')
+#
+#	Rebase Project
+#
+	git commit -m"irgendwas"
+#
+#	Prepare automatic rebase - textual suggestion 
+#	
+	for each in $COMMIT_LONG
+	do 	COMMIT_SHORT=${each:0:$COMMIT_SHORT_LEN}
+		TEXT="$(echo $(git log|grep -A5 $COMMIT_SHORT|grep -A3 Date|grep -v Date))"
+		if [ 0 -eq $C ]
+		then	msg="pick $COMMIT_SHORT $TEXT"
+		else	msg="$msg
+pick $COMMIT_SHORT $TEXT --->  f $COMMIT_SHORT $TEXT"
+		fi
+		let C++
+		[ 2 -eq $C ] && break
+	done
+	sE "Change the log to:" "No garanty this generated text is accurate!"
+	echo "$msg"
+	sE
+	press
+	git rebase -i origin/master
+	#git rebase -m"$msg" origin/master
+#
+#	Build it up initialy for rawhide
+#
+	sE "Ready to push rawhide?"
+	press
+	git push
+	fedpkg build

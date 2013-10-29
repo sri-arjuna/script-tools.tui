@@ -1,0 +1,106 @@
+#!/bin/bash
+#
+#	Desription:	Easy toggle handler for Caps-, Num- and Scrolllock
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea) ; < erat . simon @ gmail . com >
+#	Created:	2013.08.08
+#	Changed:	2013.08.08
+#	Resource:	http://forums.fedoraforum.org/showthread.php?t=292631
+#
+#	 weitjong 
+#	One place I can think of is "/etc/rc.d/rc.local". 
+#	Create the file if your system does not already have one. 
+#	The file must have an executable-bit permission set. 
+#
+#	 Ahmad Samir 
+#	so to enable numlock on all the tty's, try this:
+#	Code:
+#	for tty in /dev/tty[1-6]; do
+#		setleds -D +num < $tty
+#	done
+#
+	script_version=0.1
+#
+#	Title
+#
+	title="sea's Caps-, Num- and Scrolllock Handler using setleds"
+	sT "$title ($script_version)"
+#
+#	Variables
+#
+	leds_reset(){ #
+	# Resets to setleds defaults
+	#
+		sP "Reset settings" "$WORK"
+		setleds -D > /dev/zero
+		ReportStatus $? "Reset settings"
+	}
+	leds_num(){ #
+	# Toggles NUM using setleds
+	#
+		sP "Toggle $menu" "$WORK"
+		setleds $(leds_toggle_str $numVal)num
+		ReportStatus $? "Changed $menu to $(setleds|grep -i led|awk '{print $4}')"
+	}
+	leds_caps(){ #
+	# Toggles CAPS using setleds
+	#
+		sP "Toggle Caps" "$WORK"
+		setleds $(leds_toggle_str $capVal)caps
+		ReportStatus $? "Changed caps to $(setleds|grep -i led|awk '{print $6}')"
+	}
+	leds_scr(){ #
+	# Toggles SCROLL using setleds
+	#
+		sP "Toggle $menu" "$WORK"
+		setleds $(leds_toggle_str $scrVal)scroll
+		ReportStatus $? "Changed $menu to $(setleds|grep -i led|awk '{print $8}')"
+	}
+	leds_getvals(){ #
+	# Parses setleds for active settings and exports them to:
+	# numVal capVal scrVal
+		line="$(setleds|grep -i led)"
+		numVal=$(echo $line|awk '{print $4}')
+		capVal=$(echo $line|awk '{print $6}')
+		scrVal=$(echo $line|awk '{print $8}')
+		
+		export numVal capVal scrVal
+	}
+#
+#	Display
+#
+	[ "$TERM" = xterm ] && ReportStatus 1 "Need to be in terminal." && return 1
+	for arg in "${@}"
+	do 	leds_getvals
+		case "$arg" in
+		"-n"|"num")	leds_num ; return $?	;;
+		"-c"|"caps")	leds_caps ; return $?	;;
+		"-s"|"scroll")	leds_scr ; return $?	;;
+		"-r"|"reset")	leds_reset ; return $?	;;
+		"-h"|"help")	echo -e "locks ($script_version)
+				\rUsage: st set locks [ OPTIONS ]
+				\rWhere OPTIONS are:
+				\r\t-h\t\tThis screen
+				\r\t-c|caps\t\tToggle CAPS
+				\r\t-n|num\t\tToggle NUM
+				\r\t-s|scroll\tToggle SCROLL
+				\r\t-r|reset\tResets to defaults of setleds
+				
+				\rExample:
+				\r\tst set locks num
+				"
+				return 99	;;
+		esac
+	done
+	
+	select menu in Back Reset CapsLock NumLock ScrollLock
+	do	leds_getvals
+		case $menu in
+		Back)		return 6	;;
+		Reset)		leds_reset	;;
+		CapsLock)	leds_caps	;;
+		NumLock)	leds_num	;;
+		ScrollLock)	leds_scr 	;;
+		esac
+		sH "Press [ ENTER ] to see the menu"
+	done

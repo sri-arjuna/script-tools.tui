@@ -1,0 +1,57 @@
+#!/bin/bash
+# ------------------------------------------------------------------------------
+# | sea's Script Tools: The 3rd Generation
+# | File Description:	Handle Login Manager things - SLIM
+	script_version=0.2
+# | Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+# | Created (y.m.d):    2012.05.30
+# | Changed:            2012.06.32
+# | License:            GPL v3
+# | Modified By:        
+# | Resource:           
+# | Special Thanks: 
+# ------------------------------------------------------------------------------
+# | Title
+	sT "sea's slim tweakings : sessions (DE) ($script_version)"
+# |
+# | Vars
+	slim_conf=/etc/slim.conf
+	dedir=$stDir/lists/inst/de
+	des=""
+	DES=$(ls $dedir.*)
+	len=$[ ${#dedir} + 1 ]
+	foundDE=""
+	grep sessions $slim_conf > /tmp/slim
+# |
+# | Parsing
+	while read line; do test "sessions" = "$(echo $line | awk '{print $1}' )" && status="$line";done < /tmp/slim
+	SF="$status"
+	for D in $DES; do des="$des ${D:$len}";done
+	for d in $des; do 	addval=""
+						sP "Looking for: $d" "$PROGRESS"
+						case "$d" in
+						"lxde")	addval="startlxde"	;;
+						*)		addval="$d" 		;;
+						esac
+						
+						#echo $addval
+						#press
+						which $addval 2>&1 && \
+							foundDE="$foundDE $addval" && \
+							sE "Found: $addval" "$SUCCESS" || \
+							sE "Didnt found: $addval" "$FAILURE" 
+						
+	done
+	RW="sessions    $foundDE"
+# |
+# | Display
+	if [ "$SF" = "$(echo $RW)" ] || [ "session" = "$(echo $RW)" ]
+	then	sE "There was no change, didnt found any DE to add. Or there is nothing at all." "$FAILURE"
+	fi
+	
+	if [ "$ST" = "$RW    " ]
+	then	sE "They are identical, nothing to do..."
+	else	sed -i s/"$SF"/"$RW"/g $slim_conf && \
+			sE "$status has been replaced with:"  &&
+			sE "$RW" || sE "Could not replace..."
+	fi

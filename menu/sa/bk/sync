@@ -1,0 +1,97 @@
+#!/bin/bash
+#
+#	sea's Script Tools: The 3rd Generation
+#
+#	Description:	BACKUP sync's home partition with nas
+#			
+	script_version=0.1
+#	License:	GPL v3
+#	Created:	2013.05.09
+#	Changed:	2013.05.09
+#	Author: 	Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Resource:	  
+# 
+#	Script tools compatibility
+#
+	if [ ! -f /usr/share/script-tools/st.cfg ]
+	then	alias sT="echo"
+		alias sP="printf '\r'"
+		alias sE="echo"
+		SUCCESS="[ DONE :) ]"
+		FAILURE="[ FAILED :( ]"
+		PROGRESS="[ Working... ]"
+	else	[ -z $stDir ] && source /usr/share/script-tools/st.cfg
+	fi
+#
+#	Title
+#
+	thistitle="sea's Backup Home Sync handler"
+	sT "$thistitle ($script_version)"
+#	
+#	Variables
+#
+	retval=99
+	needHelp=false
+	thisHelp="st sa bk sync ($script_version)
+		\rỤsage: sync [-h] [-xy] /path/to/file [file2]
+		\r\t-h\tDisplays this screen
+		\r\t-XY\tDESCRIPTION
+		\rReturns (from the last displayed):
+		\r\t0 \tOK
+		\r\t1 \tBAD
+		\r\t2 \tTHIRD
+		\r\t99 \thelp screen\n"
+	today=$(date +'%Y-%m-%d')
+	SETTINGS=$SEA_CFG_DIR/backup.conf
+	source $SETTINGS
+	isRoot && mode=all || mode=single
+	synUser=""
+#
+#	Check for argument
+#
+	if [ ! -z "$1" ]; then
+		for arg in $@;do
+			case ${arg:0:4} in
+			# Help arguments
+			-\?|--\?|-h|-help|--h|--help)	needHelp=true	;;
+			# Place your arguments here
+			-single|--single)		mode=single	;;
+			esac
+			[ -d "/home/$arg" ] && synUser="$arg"
+		done
+	fi
+#	
+#	Handle Arguments
+#
+	[ $needHelp = true ] && echo -e "$thisHelp" && exit $retval
+	#[ -z "$1" ] && echo -e "$thisHelp" && exit $retval
+	[ "$mode" = edit ] && sEdit $SETTINGS && exit 0
+#	
+#	Subs
+#
+	
+#
+#	Execute Arguments
+#
+	
+#	
+#	Display
+#
+	PRE="$bk_nas_mp"
+	case $mode in
+	all)	sE "ROOT"	"$TODO"
+		for user in $(ls /home --hide=lost+found)
+		do	sT "Syncing user: $user"
+			LOC="/home/$user"
+			DEST="$PRE/$user/sync"
+			sE "$LOC" "$PRE"
+			rsync "$LOC" -Arulx "$DEST"
+			ReportStatus $? "Sync'd $user"
+		done
+		;;
+	single)	sP "Sync'ing $USER" "$PROGRESS"
+		LOC=$bk_dir_loc
+		rsync "$LOC" -Arulx "$PRE/$bk_user/sync"
+		ReportStatus $? "Sync'd $USER"
+		;;
+	esac

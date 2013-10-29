@@ -1,0 +1,25 @@
+#!/bin/bash
+# 
+#	sea's Script Tools: The 3rd Generation
+#	File Description:	Reads the users system mail
+	script_version=0.7
+#	Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created (y.m.d):    2011.06.14
+#	Changed:            2013.08.25
+#	License:            GPL v3
+#
+#	Title
+#
+	[ "-h" = "$1" ] && echo "Come on its called: $0, what do you guess?" && exit 99
+	source /usr/share/script-tools/st.cfg
+	sT "View system mail for $(Evenize $USER) ($script_version) "
+#
+#	Variables
+#
+	msg="To exit VI, enter ':q' or ':exit' and hit 'ENTER'"
+#
+#	Read current users system mail
+#
+	sE "$msg" 
+	sleep 2
+	vi /var/spool/mail/$USER

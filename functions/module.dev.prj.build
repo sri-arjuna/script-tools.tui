@@ -1,0 +1,93 @@
+
+#
+#	sea Script-Tools dev build LABEL [|  PATH BUILDARGS ]
+#	
+#	Builds the project label
+#	Submit buildargs just once
+#
+#	script_version=0.2
+#
+#	Title
+#
+
+#
+#	Subs
+#
+	build_search_compiler() { # COMPLIER
+	#
+	#
+		if [ "" = "$1" ]
+		then	sE "Usage: build_search_compiler gcc" "$FAILURE"
+		else	c=$1
+		fi
+		yum search $c
+	}
+	build_new() { # LABEL
+	#
+	#
+		output="" ; lbl="$1"
+		test "" = "$lbl" && \
+			sP "Please select a project:" "$PROGRESS" && \
+			lbl=$(sea_select $(PRJ_List))
+		source "$ST_USER_PRJ/$lbl/conf" || return 1
+		sE "Loaded Project: $lbl" "$SUCCESS"
+		if [ -f $ST_USER_PRJ/$lbl/build ]
+		then	sE "Build configuration already exists... " "$FAILURE"
+			ask "Do you want to edit instead?" && \
+				sEdit $ST_USER_PRJ/$lbl/build
+			return 1
+		fi		
+		build_compiler=$(input "What is the compiler? (gcc-c++) ")
+		build_args=$(input "What arguments are required?")
+		build_filename=$(input "Whats the filename? ($prj_file) ")
+		build_path="$prj_path"
+		build_output_dir=$(input "What is the output path? ($outputdir) ")
+#
+#	Default Variables
+#
+	test "" = "$build_filename" && build_filename="\$prj_file"
+	test "" = "$build_compiler" && build_compiler="gcc"
+	test "" = "$build_output_dir" && build_output_dir="\$outputdir"
+	
+		
+		output="# Project $(Capitalize $prj_name) - $version - Build configuration, Script-Tools ($stVer)
+	build_path=$build_path
+	build_compiler=$build_compiler
+	build_args=\"$build_args\"
+	build_filename=$build_filename
+	build_output_dir=$build_output_dir"
+		echo -e "$output" > $ST_USER_PRJ/$lbl/build && \
+			sE "Generated build configuration for $lbl" "$SUCCESS" \
+			sE "There was an error writing: $ST_USER_PRJ/$lbl/build" "$FAILURE"
+	}
+	build_label() { # LABEL
+	# Reads the build and conf files of supplied LABEL
+	# and builds it according to their settings
+		lbl="$1"
+		if [ "" = "$lbl" ]
+		then	sP "Please select a project:" "$PROGRESS"
+			lbl=$(sea_select $(ls $ST_USER_PRJ)) && \
+				retval=0 || retval=1
+			[ $retval -eq 0 ] && \
+				sE "Selected project: $lbl" "$SUCCESS" || \
+				sE "Failed.." "$FAILURE"
+				return $retval
+		fi
+		source $ST_USER_PRJ/$lbl/conf
+		source $ST_USER_PRJ/$lbl/build
+		
+		#cmd="$build_filename $build_args $build_output_dir"
+		cmd="$build_args"
+		compiler=$(which $build_comiler) 2>&1
+		[ "" = "$compiler" ] && \
+			sE "Missing compiler: $build_compiler" && \
+			sE "Trying to install: $build_compiler" "$PROGRESS" && \
+			sInst $build_compiler || return 1
+		sE "Building Project: $lbl"
+		cd $build_path
+		sE 
+		sE "Executing:"
+		sE "$compiler $cmd" "$PROGRESS"
+		sE
+		$compiler $cmd
+	}

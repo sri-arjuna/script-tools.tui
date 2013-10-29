@@ -1,0 +1,73 @@
+#!/bin/bash
+#
+#	sea's Script Tools: The 3rd Generation
+#	File Description:	Handle Login Manager things - LXDM
+	script_version=0.4
+#	Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created (y.m.d):    2012.05.30
+#	Changed:            2013.05.31
+#	License:            GPL v3
+#
+#
+#	Title
+#
+	sT "sea's LXDM Background Image Chooser ($script_version)"
+	test ! isRoot && ReportStatus 1 "Requires root rights..." && return 1
+#
+#	Vars
+#
+	conf="/etc/lxdm/lxdm.conf"
+	current="$(grep 'bg=' $conf)"
+	defaultpath="/usr/share/backgrounds"
+	list_hdir=""
+#
+#	One liners
+#
+	for d in $(ls "$XDG_HOME_DIR"); do [ -d "$XDG_HOME_DIR/$d" ] && list_hdir="$list_hdir ${d}";done
+	[ -d "$XDG_HOME_DIR/.backgrounds" ] && list_hdir="$list_hdir $XDG_HOME_DIR/.backgrounds"
+#
+#	Display
+#
+	[ ! -f "$conf" ] && \
+		ReportStatus 1 "LXDM conf file ($conf) not found" && \
+		return 1
+	sE "Current background:" "${current:3}"
+	sE "Please select a folder to search for images"
+	defaultpath=/usr/share/backgrounds && test -d $defaultpath || defaultpath=""
+	select thispath in Back $XDG_PICTURES_DIR $list_hdir $defaultpath other;do 
+		[ Back = $thispath ] && return 6 || break;done
+	#
+	#	Fail & custom ;)
+	#
+	if [ "other" = "$thispath" ]
+	then	thispath=$(input "Please type the complete path: ")
+	fi
+	#
+	#	Retrieve files
+	#
+	#test $thispath = $defaultpath && pre="" || pre="/home/$USER/"
+	images=$(find $thispath/ -name *jpg )	#*.svg|*.png
+	if [ ! "" = "$images" ]
+	then	sP "Please select an image:"
+		select img in $images ;do 
+			sE "Selected image: $img" 	"$SUCCESS"
+			break
+		done
+	else	sE "Sorry, no images found in $thispath." "$FAILURE"
+		return 1
+	fi
+	# 
+	#	Change it
+	#
+	RW="$img" # $thispath/
+	SF="${current:3}"
+	SF="$(echo $SF)"
+	RW="$(echo $RW)"
+	sE "Searching for:" "$SF" 
+	sE "Replacing with:" "$RW"
+	sP "Changing login background to $(basename $img)"	"$PROGRESS"
+	sed s\\"$SF"\\"$RW"\\g -i $conf && \
+				retval=0 || \
+				retval=1
+	ReportStatus $? "Changed login background to $img"
+	return $retval

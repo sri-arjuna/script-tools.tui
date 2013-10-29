@@ -1,0 +1,74 @@
+#!/bin/bash
+#
+#	sea's Script Tools: The 3rd Generation
+#
+#	Description:	
+#			
+	script_version=0.1
+#	License:	GPL v3
+#	Created:	2013.05.05
+#	Changed:	2013.05.05
+#	Author: 	Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Resource:	  
+# 
+#	Script tools compatibility
+#
+	if [ ! -f /usr/share/script-tools/st.cfg ]
+	then	alias sT="echo"
+		alias sP="printf '\r'"
+		alias sE="echo"
+		SUCCESS="[ DONE :) ]"
+		FAILURE="[ FAILED :( ]"
+		PROGRESS="[ Working... ]"
+	else	[ -z $stDir ] && source /usr/share/script-tools/st.cfg
+	fi
+#
+#	Title
+#
+	thistitle="sea's XY"
+	sT "$thistitle ($script_version)"
+#	
+#	Variables
+#
+	retval=99
+	needHelp=false
+	thisHelp="$(basename $0) ($script_version)
+		\rỤsage: $0 [-h] [-xy] /path/to/file [file2]
+		\r\t-h\tDisplays this screen
+		\r\t-XY\tDESCRIPTION
+		\rReturns (from the last displayed):
+		\r\t0 \tOK
+		\r\t1 \tBAD
+		\r\t2 \tTHIRD
+		\r\t99 \thelp screen\n"
+#
+#	Check for argument
+#
+	if [ ! -z "$1" ]; then
+		for arg in $@;do
+			case ${arg:0:2} in
+			ht)		url="$arg"	;;
+			[-]n)		mode="add"	;;
+			# Diffrent help options
+			[-]h[elp])	needHelp=true	;;
+			[-]?)		needHelp=true	;;
+			esac
+		done
+	fi
+#	
+#	Show Help and Exit?
+#
+	[ $needHelp = true ] && echo -e "$thisHelp" && exit $retval
+	[ -z "$1" ] && echo -e "$thisHelp" && exit $retval
+#	
+#	Subs
+#
+	
+#
+#	Execute Arguments
+#
+	
+#	
+#	Display
+#
+	CRON_New

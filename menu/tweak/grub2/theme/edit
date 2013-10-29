@@ -1,0 +1,41 @@
+#!/bin/bash
+#
+#	Description:	Copies an existing grub theme
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea)
+#	Release Date:   2013.06.27
+#	Changed Date:	2013.06.27
+	script_version=0.2
+#
+#	Title
+#
+	if [ ! -f /usr/share/script-tools/st.cfg ]
+	then	alias sT="echo"
+		alias sP="printf"
+		alias sE="echo"
+		SUCCESS="[ yay :) ]"
+		FAILURE="[ noo :( ]"
+		PROGRESS="[ wait.. ]"
+	fi
+	sT "sea's Grub2 Theme Edit ($script_version)"
+	[ ! 0 -eq $UID ] && sE "Script requires root rights!" && return 1
+#
+#	Variables
+#
+	def=/etc/default/grub
+	dir_themes=/boot/grub2/themes
+	dir_themes_d=""
+	for d in $(ls $dir_themes);do [ -d "$dir_themes/$d" ] && dir_themes_d="$dir_themes_d $d";done
+	
+#
+#	Output
+#
+	if [ -z $5 ]
+	then	sE "Please select which theme should be edited:"
+		select theme in Back $dir_themes_d;do	[ Back = $theme ] && break;done
+	else	theme=$5
+	fi
+	
+	[ ! -f "$dir_themes/$theme/theme.txt" ] && \
+		ReportStatus 1 "$dir_themes/$theme/theme.txt not found." || \
+		sEdit $dir_themes/$theme/theme.txt

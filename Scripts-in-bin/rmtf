@@ -1,0 +1,33 @@
+#!/bin/sh
+#
+#	sea's Script Tools - The 3rd Generation
+#	Description:	ReMove Temp Files
+	script_version=1.0
+#	Author: 	Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created:	2011.07.24
+#	Changed:	2013.10.20
+#	License:	GPLv3
+#
+#	Help
+#
+	[[ "-h" = "$1" ]] && \
+		echo -e "$(basename $0) ($script_version)
+			\rReMoves Temp Files - Recursivly
+			\rUsage: $(basename $0) [PATH1] [PATH2] [...]
+			\r" && exit 99
+#
+#	Variables
+#
+	oldpath=$(pwd)
+#
+#	Display
+#
+	for a in "$@"
+	do 	if [[ -d "$a" ]] 
+		then	cd "$a"
+			printf "\rRemoving temp-files from: \t$(pwd)\n"
+			find ./ -name '*~' -exec rm '{}' \; -print -or -name ".*~" -exec rm '{}' \; -print -or -name ".*.swp" -exec rm '{}' \; -print -or -name ".?outputstream*" -exec rm '{}' \; -print
+		else 	echo "Path: $a not found"
+		fi
+	done
+	cd "$oldpath"

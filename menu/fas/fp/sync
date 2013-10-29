@@ -1,0 +1,23 @@
+#!/bin/sh
+#
+#
+#	Variables
+#
+	[ ! -f $FAS_CONF ] && sE "Need to add FAS information first: st $2 fas user new" &&  return 1
+	for info in $FAS_CONF $FAS_PEOPLE $FAS_INDEX; do [ -f $info] && source $info;done
+	RSYNCCMD="rsync -avzH --links --delete-after --exclude=\.ssh*"
+#
+#	Upload
+#
+	case $1 in
+	  up)	# Prepare files, make sure chmod is right
+		find $PEOPLE_HOME -type d -print0 | xargs -0 chmod 0755
+		find $PEOPLE_HOME -type f -print0 | xargs -0 chmod 0644
+		printf "\rCalculating file list..."
+		$RSYNCCMD "$(dirname $PEOPLE_ROOT)" "$FAS_EMAIL:~"
+		return $? ;;
+	  down) $RSYNCCMD "$FAS_EMAIL:~" "$PEOPLE_HOME"
+	  	return $? ;;
+	  *) echo "Use: up|down" ; return 1 ;;
+	esac
+	

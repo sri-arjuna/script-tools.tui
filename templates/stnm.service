@@ -1,0 +1,12 @@
+[Unit]
+Description=Script-Tools Network Manager
+Documentation=man:stnm
+After=syslog.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/share/script-tools/st net stnm
+
+[Install]
+WantedBy=multi-user.target

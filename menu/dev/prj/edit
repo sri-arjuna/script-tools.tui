@@ -1,0 +1,58 @@
+#!/bin/bash
+#
+# 	sea's "dev prj edit" is aimed to assist developers to  
+# 	easy handle their multiple projects.
+#
+# 	This script is written with best intention to help, 
+# 	but there is NO warranty or garanty and I deny ANY responsiblity
+# 	that may or may not affect your system.
+#
+#
+# 	Lisence:        GPL v3
+# 	Author:         Simon A. Erat (sea)
+# 	Release Date:   2012 June 25
+# 	Changed Date:	2013 July 31
+  	script_version=0.2
+#
+#
+#	Title
+#
+	title="sea's Project Manager - Edit config"
+	sT "$title ($script_version)"
+#
+#	Vars
+#
+	lbl=""
+	list=""
+#
+#	Figure label 
+#
+	#sE "Available Keys:" 	"$(echo $(ls /home/$USER/.ssh  --hide=known_hosts | grep ".pub" ))"
+	#
+	#	Parse project dir 
+	#	for projects that contain
+	#	ssh entries.
+	#
+	for l in $(ls "$SEA_DEV_DIR/")
+	do	[  -d "$SEA_DEV_DIR/$l" ] && list+=" $l"
+	done
+	for arg in ${@}
+	do	[ -d "$SEA_DEV_DIR/$arg" ] && \
+			lbl="$arg" && break
+	done
+	
+	if [ "" = "$lbl" ]
+	then	sE "Please select a project to work with:"
+		lbl=$(PRJ_Select)
+	fi
+#
+#	Display
+#
+	sE "Selected project:"	"$lbl"
+	if [ ! -f "$SEA_DEV_DIR/$lbl/conf" ]
+	then	ReportStatus 1 "No ssh configuration found for $lbl"
+		ask "Create one now?" && \
+			SSH_New "$lbl" ||
+			return 1
+	fi
+	sEdit "$SEA_DEV_DIR/$lbl/conf"

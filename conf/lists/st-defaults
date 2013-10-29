@@ -1,0 +1,3 @@
+default_prj_extensions="bz2 gz xz zip"
+default_prj_release_order=""
+default_prj_worklist="build git rpm review koji repo fas"

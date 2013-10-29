@@ -1,0 +1,46 @@
+#!/bin/bash
+#
+#	Changes GRUB2 timeout changer
+#
+#
+#	License:        GPL v3
+#	Author:         Simon A. Erat (sea)
+#	Release Date:   2012.06.04
+#	Changed Date:	2013.07.11
+	script_version=0.7
+#
+#	Title
+#
+	sT "sea's GRUB2 Timeout changer ($script_version)"
+	 ! isRoot  && sE "Requires root access!" "$WARN" && return 1
+#
+#	Font settings / Variables
+#
+	timeouts="0 1 3 5 10 15 30 60 120 300"
+	grubdir=/boot/grub2
+	grubfile=/etc/default/grub
+	tmpfile=/tmp/grub
+	current=$(grep GRUB_TIMEOUT $grubfile|sed s/"="/" "/g|sed s/\"/' '/g|awk '{print $2}')
+#
+#	Action
+#
+	sE "The boot selection menu is currently displayed for;" "$current seconds"
+	if ask "Do you want to change the time?"
+	then	sE "How long shall the boot screen be displayed? (in seconds)"
+		select timeout in $timeouts;do break;done
+		sE "Changing to" "$timeout seconds"
+		repl="$(grep GRUB_TIMEOUT $grubfile)"
+		if [ "" = "$(echo $repl)" ]
+		then	echo -e "GRUB_TIMEOUT=$timeout" >> $grubfile
+		else	sed s/"$repl"/"GRUB_TIMEOUT=$timeout"/g -i $grubfile
+		fi
+		if [ $? -eq 0 ] 
+		then	sE
+			ask "Rebuild GRUB2?" && \
+			grub2-mkconfig -o /boot/grub2/grub.cfg > /dev/zero
+			return 0
+		fi
+		return 1
+	else	sE "" "$BACK"
+		return 0
+	fi

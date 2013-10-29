@@ -1,0 +1,37 @@
+#!/bin/bash
+#
+#	Description:	Copies an existing grub theme
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea)
+#	Release Date:   2012.12.23
+#	Changed Date:	2013.06.27
+	script_version=0.1
+#
+#	Title
+#
+	if [ ! -f /usr/share/script-tools/st.cfg ]
+	then	alias sT="echo"
+		alias sP="printf"
+		alias sE="echo"
+		SUCCESS="[ yay :) ]"
+		FAILURE="[ noo :( ]"
+		PROGRESS="[ wait.. ]"
+	fi
+	sT "sea's Grub2 Theme copy ($script_version)"
+	[ ! 0 -eq $UID ] && sE "Script requires root rights!" && return 1
+#
+#	Variables
+#
+	def=/etc/default/grub
+	dir_themes=/boot/grub2/themes/
+#
+#	Output
+#
+	sE "Please select which theme is the source:"
+	select theme in Back $(ls $dir_themes);do [ Back = $theme ] && return 0;break;done
+	new=$(input "What is the new theme name?")
+	sP "Copy content of $theme..." "$WORK"
+	cp -r $dir_themes/"$theme" $dir_themes/"$new" && \
+		ReportStatus 0 "Created $new" || \
+		ReportStatus 1 "There was an error copying $dir_themes/$theme to $dir_themes/$new"
+	

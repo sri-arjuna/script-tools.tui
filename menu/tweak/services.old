@@ -1,0 +1,117 @@
+#!/bin/bash
+# |
+# | Service Performance script, August 1st 2011 by sea
+# |
+# | This script is written with best intention to help, 
+# | but there is NO warranty and I deny ANY responsiblity
+# | that may or may not affect your system.
+# |
+# | Lisence:		GPL v3
+# | Author:			Simon A. Erat (sea)
+# | Date Created:	2011 August 1st
+# | Date Changed:	2012 June 3rd
+    script_version="0.7"
+# | Resource URL:   
+# | Release URL:    
+# |
+# | Title
+	sT " sea's Services tweak ($script_version)"
+# |
+# | Variables
+	etc=/etc/systemd/system
+	lib=/lib/systemd/system
+	REQUIRED_ITEMS="
+		.boot.mount
+		.media.mount
+		.home.mount
+		.remount-rootfs.service 
+		.sys-fs-fuse-connections.mount
+		.?systemd-remount-api-vfs.service
+		.systemd-tmpfiles-setup
+		.udev-trigger.service
+		.irqbalance.service
+		" 
+		# To disable any of the above service/mount may result in an unusable system!
+	USEFUL_ITEMS="
+		.systemd-readahead-collect
+		.systemd-readahead-replay
+		.mcelog
+		"
+	toDisable="
+		avahi-daemon
+		livesys
+		livesys-late
+		sendmail
+		exim
+		sandbox
+		udev-settle
+		ip6tables"
+	toDisMount="
+		sys-kernel-security
+		sys-kernel-config
+		sys-kernel-debug
+		dev-mqueue
+		dev-hugepages"
+# |
+# | Input
+	if ! ask "Do you have SCSI devices?"
+	then	toDisable="$toDisable
+		iscsi
+		iscsid"
+	fi
+	if ! ask "Do you have any virtual, software or physical RAID, OR are using LVM?"
+	then	toDisable="$toDisable
+		lvm2-monitor
+		mdmonitor
+		mdmonitor-takeover
+		fedora-loadmodules
+		fedora-storage-init
+		fedora-wait-storage
+		fedora-storage-init-late
+		"
+	fi
+	if ! ask "Do you use a NAS (smb/nfs)?"
+	then	toDisable="$toDisable
+		netfs
+		nfs-idmap
+		nfs-lock
+		var-lib-nfs-rpc_pipefs"
+	fi
+	if ! ask "Are you using VirtualBox?"
+	then	toDisable="$toDisable
+		vboxdrv
+		dkms"
+	fi
+# |
+# | Outout
+	sE "Use at your own risk!"
+	sE "Going to disable these services:"
+		echo "$toDisable"
+	sE "As well as these mounts:"
+		echo "$toDisMount"
+	press 
+	sE "-------------------------------"
+	for service in $toDisable
+	do		sP "Working with service: $service" "$PROGRESS"
+			if [ "." = "${service:0:1}" ] #|| [ ! -f $etc/$service.service ]
+			then	sE "Not found service: $service" "$SKIP"
+			else	sudo systemctl stop $service.service
+					sudo systemctl disable $service.service && ret="$SUCCESS" || ret="$FAILURE"
+					#sudo ln -sf /dev/zero /etc/systemd/system/$service.service
+					sudo systemctl unmask $service.service
+					sE "Worked with service: $service" "$ret"
+			fi
+	done
+	for mount in $toDisMount
+	do		sP "Working with mount: $mount" "$PROGRESS"
+			#if [ "." = "${mount:0:1}" ] #|| [ ! -f $etc/$mount.mount ]
+			if [ "." = "${mount:0:1}" ]  #|| [ ! -f $etc/$mount.mount ]
+			then	sE "Not found mount: $mount" "$SKIP"
+			else	sudo systemctl stop $mount.mount
+					sudo systemctl disable $mount.mount && ret="$SUCCESS" || ret="$FAILURE"
+					#sudo ln -sf /dev/zero /etc/systemd/system/$mount.mount
+					sudo systemctl unmask $mount.mount
+					sE "Worked with mount: $mount" "$ret"
+			fi
+	done
+	sudo systemctl daemon-reload

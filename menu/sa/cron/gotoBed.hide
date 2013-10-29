@@ -1,0 +1,52 @@
+#!/bin/bash
+# ---------------------------------------------------------------------------------------
+# | Project sea:	Package of small scripts for an easy set up of linux uses	|
+# | Description:        Adds a shutdown timed job to cron				|
+# | Script by:          Simon A. Erat (sea)						|
+# | Contact:            http://forums.fedoraforum.org/member.php?u=183882   (eRats)	|
+# | Date (created):     2011.07.24 (Year/Month/Day)					|
+# | Date (changed):     2011.10.04 							|
+# | FileVersion:        0.6								|
+# | Resource:										|
+# ---------------------------------------------------------------------------------------
+# |
+    scheader "sc Setup bed time"
+    scheader "sc setup cron gotoBed"
+# |
+    if ! isROOT ; 
+    	then scecho "This script should be run as root" && if
+    	ask "Do you want to login now?" ; then
+    	su -c "s cron gotoBed" && echo && exit 0 ; else
+    	return 1 ; fi
+    fi
+    curfile=/tmp/cronjobs.tmp
+    rm $curfile
+# |
+# | check for time variable
+	sleeplist="2200 2230 2300 2330 0000 0030 0100 CANCEL"
+	actionlist="suspend hibernate shutdown powersave"
+	scecho "Please select the action, how the computer should poweroff " " "
+	select sleepaction in $actionlist ; do break ; done
+	scecho "Please select a time you want your computer to be $sleepaction" " "
+	select tosolve in $sleeplist ; do
+	    if test "CANCEL" = "$tosolve"
+		then echo "# | Setup of gotoBed was canceled by user.." && return 0 
+		else break
+	    fi
+	done
+# |
+# | Split time
+     tmin="${tosolve:2}"
+    thour="${tosolve:0: ( -2 )}"
+    sleeptime="$tmin $thour"
+# |
+# | Generate Command
+    cmdSleep="$sleeptime * * 1-5 " 
+    cmdSleep="$cmdSleep /sbin/pm-$sleepaction"
+# |
+# | Code
+    cronAdd "$cmdSleep" "$curfile"
+    cronList
+# |
+# | Cleanup
+    rm $curfile

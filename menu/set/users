@@ -1,0 +1,75 @@
+#!/bin/bash
+# ------------------------------------------------------------------------------
+# | sea's Script Tools: The 3rd Generation
+# | File Description:	Adds users from existing /home path.
+# | File Version:       0.1
+# | Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+# | Created (y.m.d):    2012.05.30
+# | Changed:            2012.05.30
+# | License:            GPL v3
+# | Modified By:        
+# | Resource:           
+# | Special Thanks:     
+    script_version=0.1
+# ------------------------------------------------------------------------------
+# | Title
+    sT "sea's Add Users script ($script_version)"
+# |
+# | Variables
+    users=$(ls /home --hide=lost+found)
+    passwd="/etc/passwd"
+    sudoers=/etc/sudoers
+# |
+# | One Liners
+    test ! 0 = $UID && sE "Script requires root rights." && exit 1
+# |
+# | Subs
+    isUsrExist() { # USERNAME
+    # Returns 0 if found
+    # Returns 1 if not
+    	existRetVal=$(cat $passwd | grep "$1")
+    	if [ "" = "$existRetVal" ]
+    	then	return 1
+    	else	return 0
+    	fi
+    }
+    isUsrSudo() { # USERNAME
+    # Returns 0 if found
+    # Returns 1 if not
+    	sudoRetVal=$(cat $sudoers | grep "$1")
+    	if [ "" = "$sudoRetVal" ]
+    	then	return 1
+    	else	return 0
+    	fi
+    }
+# |
+# | Display
+	sE "Parsing /home:" "$users"
+	if ask "Do you want to add some users to that list?"
+	then	sE "Type the names, with a space as seperator."
+			read newusers
+			users="$users $newusers"
+	fi
+	for user in $users
+	do	sP "Is $user in $passwd?" "$PROGRESS"
+		if isUsrExist $user
+		then	sE "$(Capitalize $user) is in $passwd." "$SUCCESS"
+		else	sP "Adding $user...." "$PROGRESS"
+				useradd $user -c $(Capitalize $user) -m && \
+					 sE "Added $user" "$SUCCESS" && passwd $user || \
+					 sE "There was an error adding $user." "$FAILURE"
+		fi
+		
+		sP "Is $user in $sudoers?" "$PROGRESS"
+		if isUsrSudo $user
+		then	sE "$(Capitalize $user) is in $sudoers" "$SUCCESS"
+		else	if ask "Add $user to sudoers?"
+				then	if ask "With password"
+						then	echo -e "$user \t ALL=(ALL) \t ALL" 		  >> $sudoers
+						else	echo -e "$user \t ALL=(ALL) \t NOPASSWD: ALL" >> $sudoers
+						fi
+						sE "Granted sudo permission to $user" "$SUCCESS"
+				else	sE "Did not grant sudo rights." "$FAILURE"
+				fi
+		fi
+	done

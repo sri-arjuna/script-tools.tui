@@ -1,0 +1,27 @@
+#!/bin/bash
+#
+#	Builds $1[.src.rpm] on koji
+#	Attempt to build x86_64 i686x86
+#
+#	Created:	2013.09.06
+	script_version=0.1
+#
+#	Variables
+#
+	EXT=".src.rpm"
+	[ -z $3 ] && \
+		echo "Usage: $(basename $0) $1 $2 PKG-VER[-REL/DIST][$EXT]" && \
+		exit 1 || pkg=$3
+	[ ! "$EXT" = "${pkg:${#pkg}-${#EXT}}" ] && pkg+="$EXT"
+	ARCHS="noarch i386 i486 i586 i686 i786 x86_64 "
+	RELEASE="f$(cat /etc/fedora-release|awk '{print $3}')"
+#
+#	Display
+#
+	sT "sea's Fedora-Review assistant ($script_version)"
+	sE "Building package $pkg from scrach on koji on these archs:" "$ARCHS"
+	
+	for arch in $ARCHS
+	do	sT "Building $3 for $arch" #"$WORK"
+		koji build --scratch --arch-override=$arch $RELEASE $pkg
+	done

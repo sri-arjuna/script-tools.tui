@@ -1,0 +1,215 @@
+
+#
+#	sea's dev prj is aimed to assist developers to  
+#	easy handle their multiple projects.
+#
+#	This script is written with best intention to help, 
+#	but there is NO warranty, garanty and I deny ANY responsiblity
+#	that may or may not affect your system.
+#
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea)
+#	Release Date:   2012.06.22
+#	Changed Date:   2012.08.28
+#
+#	Title
+#			Keep It Stupid Simple
+#
+#	Verify Path variables
+	tv=$ST_CONF_DIR
+	for t in $(ls $tv);do test -f $tv/$t && source $tv/$t;done
+#
+#	Subs
+	PRJ_List() { #
+	# List the content of \$ST_USER_PRJ ($ST_USER_PRJ)
+	#
+		cd $ST_USER_PRJ
+		ls --hide=lost+found | grep -v "\." 
+	}
+	PRJ_Select() { #
+	# Select among existing projects
+	# Returns the NAME for success, 1 otherwise
+		#
+		#	Get a list of available projects
+		#
+		PROJECTS=$(PRJ_List)
+		#
+		#	If no projects are available, create a new one?
+		#
+		if [ "" = "$PROJECTS" ]
+		then	sE "There are no existing projects in.." "$ST_USER_PRJ"
+				ask "Create a new one?" && \
+					PRJ_New && echo $(PRJ_Select) && return 0 || \
+					return 1
+		else	#
+				#	If there are entries, verify they are existing paths and return 0
+				#	Otherwise failed
+				#
+				C=0
+				for c in $PROJECTS;do ((C++));done
+				test "1" = "$C" && echo $PROJECTS && return 0
+				
+				select thisPrj in Cancel $PROJECTS
+				do	case $thisPrj in
+					Cancel)	return 1
+							;;
+					*)		test -d "$ST_USER_PRJ/$thisPrj" && \
+							echo "$thisPrj" && \
+							return 0 || return 1
+							;;
+					esac
+				done
+		fi
+	}
+	PRJ_New() { # [ LABEL ]
+	# Adds a new project,
+	# and define its type (alpha)
+		#
+		#	Arguments
+		#
+		[ -z $1 ] && \
+			lbl=$(input "Please label your new project: ") || \
+			lbl=$1
+		cd $ST_USER_PRJ
+		[ -z XDG_PROJECTS_DIR ] && XDG_PROJECTS_DIR="\$HOME/Projects"
+		if [ -d $lbl ] 
+		then	ReportStatus 1 "Project $lbl already exists!"
+			exit 1
+		fi
+		#
+		#	Create the project
+		#
+		CheckPath "$ST_USER_PRJ/$lbl"
+		#
+		#	Retrieve possible types
+		#
+		types=$(ls $stDir/Included_Functions/*prj* --hide=nas)
+		[ "" = "$types" ] && sE "Sorry, I had done an error..." && return 1
+		for typ in $types; do [ ! "$(echo .)" = "$(echo ${typ:61:1})" ] && ntypes+=" ${typ:58}";done
+		types="$ntypes"
+		#
+		#	Project Configuration
+		#
+		def_name=$lbl
+		
+		[ -z $XDG_PROJECTS_DIR ] && \
+			def_out="\$HOME/Projects/output" || \
+			def_out="\$XDG_PROJECTS_DIR/output"
+		def_ver=0.0.1
+		dev_change="$ST_USER_PRJ/$lbl/conf"
+		prj_name=$(input "Please enter the $lbl's full name ($def_name)")
+		def_prj="$XDG_PROJECTS_DIR/$prj_name/"
+		prj_path=$(input "Please enter the path of your project ($def_prj)")	
+		test "$version" =  "" && version="$def_ver"
+		test "$prj_name" = "" && prj_name="$def_name"
+		test "$prj_path" = "" && prj_path="$def_prj"
+		test "$outputdir" = "" && prj_out="$def_out/$lbl-\$(date +'%Y%m%d')"
+		test "$prj_file" = "" && prj_file="\$prj_name-\$version"
+		
+		test ! -d $outputdir && mkdir -p $outputdir
+		test ! -d $prj_path && mkdir -p $prj_path
+		test "$prj_change_ver" = "" && prj_change_ver="$def_change"
+		
+		cat > $ST_USER_PRJ/$lbl/conf << EOF
+# Project $(Capitalize $prj_name) Configuration File, created with Script-Tools ($stVer)
+	prj_name="$prj_name"
+	prj_path="$prj_path"
+	outputdir="$prj_out"
+	version=$version
+	prj_file=\$prj_name-\$version
+	prj_change_ver="\$ST_USER_PRJ/$lbl/conf"
+EOF
+		#
+		#	Define its type
+		#
+		sE "Please select the tasks for your project ($lbl):"
+		select typ in Done $types
+		do	case $typ in
+			Done)	return 0	;;
+			*)	cmd="$sst dev prj $typ add $lbl"
+				cmd="$(CAPS $typ)_New $lbl"
+				[ ! -f $ST_USER_PRJ/$lbl/$typ ] && \
+					sP "Executing: $cmd" "$WORK" && \
+					sleep 1 && \
+					$cmd && \
+					ReportStatus $? "Added $(Capitalize $typ)"
+			esac
+		done
+		
+		sE "In a later process, when release the project," "these two optional scripts may be added."
+		sE "It is up to you whether you create the scripts or not," "however, once they're there,"
+		sE "they get sourced ($scriptdir/*) with every '$sst dev release'."
+		press
+		PRJ_Scripts $lbl
+	}
+	PRJ_Remove() { # [ LABEL ]
+	# Removes a new project,
+	# and all its sub-types.
+		#
+		#	Arguments
+		#
+		[ -z  $1 ] && \
+			sE "Please select the label to be removed:" && \
+			lbl=$(PRJ_Select) || \
+			lbl=$1
+		#
+		#	Delete the project
+		#
+		if ask "Create a backup?"
+		then	tar acf $HOME/$lbl-$(date +'%Y%m%d').tar.gz "$ST_USER_PRJ/$lbl"
+			ReportStatus $? "Created final backup of $prj_name"
+		fi
+		rm -fr "$ST_USER_PRJ/$lbl"
+		ReportStatus $? "Removed $prj_name"
+	}
+	PRJ_Edit() { # [ LABEL ]
+	# List the configuration files that
+	# are stored in the project-label.
+		#
+		#	Arguments
+		#
+		[ "" = "$1" ] && \
+			sE "Please select the label which you want to edit:" && \
+			lbl=$(PRJ_Select) || \
+			lbl=$1
+		#
+		#	Generate list and verify
+		#
+		list=""
+		for l in $(ls $ST_USER_PRJ/$lbl/)
+		do	test -f "$ST_USER_PRJ/$lbl/$l" && list="$list $l"
+		done
+		[ "" = "$list" ] && \
+			sE "There are no types to edit..." && \
+			ask "Add a type to $lbl?" && \
+			PRJ_New $lbl
+		#
+		#	Select sub types to edit
+		#
+		sE "Please select the kind to edit:"
+		select typ in Back $list
+		do	case $typ in
+			Back)	return
+				;;
+			*)	[ -f "$ST_USER_PRJ/$lbl/$typ" ] && \
+					vi $ST_USER_PRJ/$lbl/$typ
+				;;
+			esac
+		done
+	}
+	PRJ_Scripts() { # [ LABEL ]
+	# Select among the diffrent project labels
+	# Each new project is stored as a folder in $ST_USER_PRJ
+		[ "" = "$1" ] && \
+			sE "Please select the label which you want to edit:" && \
+			lbl=$(PRJ_Select) || \
+			lbl=$1
+		
+		scriptdir=$ST_USER_PRJ/$lbl/scripts
+		sE "Which file to edit?"	
+		select menu in Back pre after
+		do	test Back = $menu && return 1
+			test ! -d $scriptdir && mkdir $scriptdir
+			$editor_gui $scriptdir/$menu  || $editor_cli $scriptdir/$menu
+		done
+	}

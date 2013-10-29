@@ -1,0 +1,169 @@
+#!/bin/bash
+# |
+# | Service Performance script, August 1st 2011 by sea
+# |
+# | This script is written with best intention to help, 
+# | but there is NO warranty and I deny ANY responsiblity
+# | that may or may not affect your system.
+# |
+# | Lisence:		GPL v3
+# | Author: 		Simon A. Erat (sea)
+# | Date Created:	2011.08.01
+# | Date Changed:	2012.07.13
+    script_version="0.8"
+# | Resource URL:   
+# | Release URL:    
+# |
+# | Title
+	sT " sea's Tweak Services ($script_version)"
+# |
+# | Variables
+	etc=/etc/systemd/system
+	lib=/lib/systemd/system
+	sa=$(which systemd-analyze) || sInst systemd-analyze
+	sab="$sa blame"
+	dis_abrt=false
+	dis_blue=false
+	dis_cifs=false
+	dis_live=false
+	dis_lvm2=false
+	dis_scsi=false
+# |
+# | Sub
+	DisableService() { # SERVICE|MOUNT
+	# Stop, overwrite with empty, unmask
+	# and finaly disable the service
+	    sP "Working with $1" "$PROGRESS"
+		sudo systemctl stop $1				> /dev/zero
+		sudo ln -sf /dev/zero /etc/systemd/system/$1	> /dev/zero
+		sudo systemctl unmask $1 && ret="$SUCCESS" || ret="$FAILURE"	> /dev/zero
+		sudo systemctl disable $1 && ret="$SUCCESS" || ret="$FAILURE"	> /dev/zero   # 2>1&
+	    sE "Worked with: $1" "$ret"
+	}
+# |
+# | Groups	
+	grp_req="
+		boot.mount
+		media.mount
+		home.mount
+		remount-rootfs.service 
+		sys-fs-fuse-connections.mount
+		systemd-remount-api-vfs.service
+		systemd-tmpfiles-setup
+		udev-trigger.service
+		irqbalance.service
+		" 
+		# To disable any of the above service/mount may result in an unusable system!
+	grp_usefull="
+		systemd-readahead-collect
+		systemd-readahead-replay
+		mcelog
+		"
+	grp_abrt="
+		abrt-vmcore.service
+		abrt-ccpp.service
+		"
+	grp_blue="bluetooth.service"
+		
+	grp_cifs="
+		netfs.service
+		nfs-idmap.service
+		nfs-lock.service
+		var-lib-nfs-rpc_pipefs.service
+		"
+	grp_live="
+		livesys.service
+		livesys-late.service
+		"
+	grp_lvm2="
+		lvm2-monitor.service
+		mdmonitor.service
+		mdmonitor-takeover.service
+		fedora-loadmodules.service
+		fedora-storage-init.service
+		fedora-wait-storage.service
+		fedora-storage-init-late.service
+		"
+	grp_scsi="
+		iscsi.service
+		iscsid.service
+		"
+	toDisable="
+		spice-vdagentd.service
+		avahi-daemon.service
+		sendmail.service
+		exim.service
+		sandbox.service
+		udev-settle.service
+		ip6tables.service
+		"
+	toDisMount="
+		sys-kernel-security.mount
+		sys-kernel-config.mount
+		sys-kernel-debug.mount
+		dev-mqueue.mount
+		dev-hugepages.mount
+		"
+# |
+# | Preparation
+	sP "Retrieving started services..." "$PROGRESS"
+		list_services=$($sab | awk '{print $2}')
+	sE "Retrieved services." "$SUCCESS"
+	
+	sP "Generating task list..." "$PROGRESS"
+		for serv in $list_services; do
+		case $serv in
+		"livesys.service")	dis_live=true ;;
+		"iscsi.service")	dis_scsi=true ;;
+		"nfs-lock.service")	dis_cifs=true ;;
+		"netfs.service")	dis_cifs=true ;;
+		"lvm2.service") 	dis_lvm2=true ;;
+		"mdmonitor.service")	dis_lvm2=true ;;
+		"mdmonitor.service")	dis_lvm2=true ;;		
+		"bluetooth.service")	dis_blue=true ;;
+		"abrt-vmcore.service")	dis_abrt=true ;;
+		"abrt-ccpp.service")	dis_abrt=true ;;
+		esac
+		done
+	sE "Generated task list." "$SUCCESS"
+# | 
+# | Action	
+	#
+	#	First disable services that are not 
+	#	essential to boot.
+	#
+	sT " Disabling unrisky Services"
+	for s in $toDisMount $toDisable; do DisableService $s;done
+	if $dis_abrt
+	then	for g in $grp_abrt; do DisableService $g;done
+	fi
+	if $dis_blue
+	then	for g in $grp_blue; do DisableService $g;done
+	fi
+	if $dis_live
+	then	for g in $grp_live; do DisableService $g;done
+	fi
+	#
+	#	Risky ones, depending on your system,
+	#	disabling any of those might cause an unbootable system!
+	#
+	sT " Disable risky servcies"
+	if $dis_cifs
+	then	ask "Do you have any NAS, Server or other shares in your homenetwork?" ||
+		    for g in $grp_cifs; do DisableService $g;done
+	fi
+	
+	if $dis_lvm2
+	then	ask "Do you have any LVM2, RAID set up?" ||
+		    for g in $grp_lvm2; do DisableService $g;done
+	fi
+	if $dis_scsi
+	then	ask "Do you have any SCSI devices?" ||
+		    for g in $grp_scsi; do DisableService $g;done
+	fi
+# | 
+# | Done
+	sudo systemctl daemon-reload
+	sE
+	sE "Done, please reboot your computer 2 times before any further analysis!"
+	echo

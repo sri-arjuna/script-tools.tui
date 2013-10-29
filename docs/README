@@ -1,0 +1,258 @@
+Read Me 0.5  --  2013 July 24  -- sea
+-------------------------------------
+
+Lisence
+Usage
+Purpose
+Installation
+Expendable
+Structure
+Manual (in progress)
+
+
+                   Lisence
+/-------------------------------------------\
+|           GNU Public CopyLeft v3          |
+|        $stDir/Documention/gpl-v3.txt      |
+|    http://www.gnu.org/copyleft/gpl.html   |
+\-------------------------------------------/
+
+	Usage
+------------------------------
+Using Script-Tools is quite easy, once installed, simply type "st" in any terminal,
+or use the link in the menu to open it.
+
+Once you are in the menu, you'll get a list presented which you select by numbers.
+Direct access to actual actions are established by simply appending your choices.
+Example: 
+You had started "st" ; cmd="st"
+Then you had selected 4 (net) ; cmd="st net"
+There you want to download a youtube video and select menuentry 5 (yt); cmd="st net yt"
+
+Now you can simply follow the menu, or try if i had added a helpscreen already,
+to look so, try this:
+"$cmd -h" which would be equal to: "st net yt -h"
+
+
+	Intentions
+------------------------------
+I want to learn for myself and help you on the way.
+I do not want to harm you, i hope i have placed warnings in the scripts before
+ciritcal actions, however, i'm human and therefore imperfect, thus i deny any 
+responsiblility for any trouble that might have been caused by script-tools.
+
+I do use and work at these scripts almost daily, and after considering a script
+to be 'stable', i havent lost any data due to it, ever, so far.
+
+Layer 1: ~ 95% working for current needs
+  * A Scripted Framework, that let transform a simple CLI into a TUI
+  * Handler for OS/Distro dependend commands like: yum, pcman or apt-get.
+  * Handler that care about diffrent default paths used in diffrent distros.
+  * Easy extendable with custom scripts, adding them with 'newScript NAME'
+  
+Layer 2: ~ 75% working for current needs / knowhow-practice
+  * BASIC-Single-PersonProject management
+  * Simplified/automated as good as it gets - Redistribution
+  * Configuring Script-Tools & Editing configuration files of projects
+  
+Layer 3:
+  * Tried to add scripts i've created since 2011 with a 'logical' (or ABR) way.
+  * Tried to keep scripts as FOSS as possible according to Fedora Philosophy.
+
+Layer 4:
+  * Some very few scripts ($stDir/Scripts-in-bin) that will be placed in /usr/bin, 
+    as they are too tiny to have any long command syntax.
+    
+
+
+	Installation
+------------------------------
+The default installation directory is /usr/share/script-tools.
+However, you may place it anywhere you want, and execute the script from there. 
+It will automaticly symlink its current location to /usr/share/script-tools.
+
+From the tarball, the first execution the scripts might ask for a password, 
+as it is symlinking the execute script "$stDir/St" to "/usr/bin/st".
+
+GIT
+As you need to be root when installing a package, installing code that is not packages 
+requires root as well, as some tasks to make the package usuable require root access.
+Namley this is to symlink "st" to "/usr/bin" and all files from $stDir/Scripts-in-bin as well.	
+	su -c "git clone git://git.code.sf.net/p/script-tools/code /usr/share/script-tools"
+	su -c "/usr/share/script-tools/st"
+
+
+
+	Extendable
+------------------------------
+To organize scripts can be difficult as soon two or more scripts 'should' have 
+the same name but for diffrent purposes. Here is where the Script Tools joins.
+To make it easy for you to add your own scripts, Script-Tools offers you folders
+within its configuration area in $XDG_CONFIG_DIR/script-tools/scripts.
+Scripts located in that script-dir may be executed with: st custom [SUBFOLDER..] NAME
+Those scripts may use all functions provided by Script-Tools.
+Get an overview of the functions in $SEA_DOC_DIR/CommandList.
+
+Into the $SEA_LIB_DIR, you may place either your own scripts which 
+contain functions for your own usage or configuration files, that may or may not
+overwrite the default variables of the Script Tools Collection.
+
+NOTE: 
+In $SEA_SCRIPT_DIR you may create your own path structure which may be 
+executable by using a command similar to this "$sst custom path script" which will 
+execute "$SEA_SCRIPT_DIR/path/script". 
+
+
+	Customizable
+------------------------------
+Just like any good 'program' you can configure script-tools
+Once it is properly installed, simply type "st conf" to access the configuration screen.
+You will find these options:
+* incl	Contains configuration files, such as for CLI.GUI, default settings for 'st net yt'
+	or default path to be looked for iso files from 'st iso usb'.
+* scripts
+	Will be empty until you create a script using:
+	"st conf scripts new [NAME] -s" or 'newScript [NAME] -s"
+	Here you may sort your scripts using folders and access them easy with:
+	"st custom [FOLDER] [FOLDER...] SCRIPTNAME"
+* st	This is actualy the only conf section that you propably 'require' to change.
+	As this section lets you set your favorite editors for GUI/CLI as well
+	as (some of) the default paths script-tools uses
+
+
+	Structure (Code Handling)
+------------------------------
+In theory ;) $stDir represents the folder where script-tools resides.
+By default (rpm installation) this should be /usr/share/script-tools.
+
+Script-Tools then loads all configurations and functions from within its subdirs,
+and starts to pars arguments, if none, using "sMenu $stDir/$GUISTYLE/", where
+$GUISTYLE is either UI_CLI or UI_GUI (much later!).
+sMenu opens the passed folder and looks for diffrent files.
+default.info, default.help, default.$FOLDERNAME
+	Structure
+------------------------------
+After successfull installation, there is a new variable around, which is called stDir. 
+$stDir is usualy /usr/share/script-tools, but may differ. Either way, $stDir will be that path.
+
+Path 			Description
+--------------------------------------------------------------------
+$stDir/.        Contains the executeable script $sst and a symlink to load the environment.
+$stDir/Configuration_Variables
+                Contains the default configuration for the scripts.
+                To overwrite default values, simply copy the files here
+				to: $HOME/bin/$USER-libs, those files will be read after $stDir/cfg.
+$stDir/Documention (\$SEA_DOC_DIR)
+                Contains README and a CommandList which was generated using a script.
+                The CommandList contains the functions of the scripts in $stDir/libs, 
+                so you can use them in your scripts.
+$stDir/Documention/Manual
+		Once the script is done, this folder will contain the manpages.
+$stDir/Script-Core
+                Internal Templates, or script to generate such.
+$stDir/Included_Functions (\$SEA_INCLUDE_DIR)
+                Scripts which provide some of the functinos used in the scripts.
+$stDir/Configuration_Lists
+                Contains various lists, of minimal packages, of login-managers, 
+                default paths, and similar
+$stDir/UI_CLI (\$SEA_CLI_DIR)
+                This is the base directory from where the Script Tools is parsing the menu. 
+
+
+
+------------------------------
+//////////////////////////////
+------------------------------
+
+
+
+Manual			IN PROGRESS
+------------------------------
+1)  st            
+2)  st dev        
+3)  st dev prj
+4)  st dev sf
+5)  st dev rpm
+6)  st dev nas
+7)  st iso dl-fedora
+8)  st iso live-image-beta
+9)  st iso usb
+10) st sa ------ todo ------
+-----------------In Progress -------------- START
+11) st set
+12) st set alias
+13) st set stage
+14) st set users
+15) st set pkgs
+16) st set lm
+17) st set lm deskfile
+18) st set lm lxdm
+19) st set lm lxdm install
+20) st set lm lxdm autologin-name
+21) st set lm lxdm autologin-toggle
+22) st set lm lxdm bg-image
+23) st set lm lxdm bg-style
+24) st set lm slim
+25) st set lm slim install
+26) st set lm slim def-usr-name 
+27) st set lm slim def-usr-toggle
+28) st set lm slim edit-session (not working)
+29) st set lm slim autologin-toggle (not working)
+-----------------In Progress -------------- END
+30) st tweak
+31) st tweak default-dirs
+32) st tweak grub2
+33) st tweak plymouth
+34) st tweak services
+35) st $USER
+------------------------------
+
+
+
+
+Section: dev, stands for developer and device
+------------------------------
+This section is based upon projects, created 
+by the file prj of this folder.
+Each project is called LABEL.
+The LABEL is thought to be a short term phrase, 
+without spaces, like an abrvehiation (abr), 
+for easy CLI access and reusability.
+The configuration files of these scripts will
+be stored in $SEA_PROJECT_DIR.
+
+st dev prj  |	[ LABEL ARGUMENT ]
+----------
+Arguments:
+n | New    LABEL
+e | Edit   LABEL
+r | Remove LABEL
+
+st dev sf   |	[ LABEL ARGUMENT ]
+----------
+Arguments:
+n | New      LABEL
+e | Edit     LABEL
+b | Branch   LABEL (with GIT, alpha, svn not yet supportet)
+u | Upload   LABEL
+d	: Download LABEL (alpha)
+
+st dev rpm   |	[ LABEL ARGUMENT ]
+----------
+Arguments:
+n | New       LABEL
+c | Changelog LABEL
+s | Specfile  LABEL
+b | build     LABEL
+
+To download your upstream project, simply type:
+st dev sf LABEL d
+
+Now you may branch it with GIT: 
+st dev sf LABEL b [BRANCH]
+
+Verify the spec file:
+st dev rpm LABEL s
+
+Package your project with rpmbuild:
+st dev rpm LABEL b

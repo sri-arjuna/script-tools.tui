@@ -1,0 +1,15 @@
+httpd
+php
+php-mhash
+php-mcrypt
+php-mysql
+phpmyadmin
+mod_ssl
+mysql-server
+mysql
+mysql-gui-tools
+system-config-httpd
+system-config-users
+system-config-services
+webalizer
+lua

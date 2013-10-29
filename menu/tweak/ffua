@@ -1,0 +1,142 @@
+#!/bin/bash
+#
+#	Changes useragent to fedora linux
+#	
+#	
+#			
+	script_version=0.4
+#	License:	GPL v3
+#	Created:	2013.07.05
+#	Changed:	2013.09.10
+#	Author: 	Simon A. Erat (sea) ; < erat DOT simon AT gmail DOT com >
+#	Resource:	http://www.mozilla.org/build/revised-user-agent-strings.html
+#			http://www.useragentstring.com/pages/links.php
+# 
+# 
+#	Script tools compatibility
+#
+	if [ ! -f /usr/share/script-tools/st.cfg ]
+	then	clear ; clear
+		shopt -s expand_aliases
+		alias sT="echo -e '\n\n\t\t'"
+		alias sP="printf '\r'"
+		alias sE="echo"
+		alias sInst="sudo yum install -y"	# This is very limited as main audience is redhat based
+		DONE="[ DONE ]"
+		FAIL="[ FAIL ]"
+		WORK="[ WORK ]"
+		ReportStatus() { [ $1 -eq 0 ] && echo "$DONE  $2" ; [ $1 -eq 1 ] && echo "$FAIL  $2" ; [ $1 -eq 3 ] && sP "$WORK  $2" ; return $1 ; }
+		ask() { echo;echo;read -n1 -p "$1 (y/n)" answer ; [ [joys] = $answer ] && retvalue=0 || retvalue=1 ; printf "\n";return $retvalue; }
+		input() { echo;echo;read -p "$1 " input ; echo "$input" ; }
+		press() { read -p "Press [ ENTER ] to continue..." buffer ; }
+		sEdit() { for editor in gedit kedit nano vim vi ed;do $editor "$1" && return 0;done;return 1;}
+	else	[ -z $stDir ] && source /usr/share/script-tools/st.cfg
+	fi
+#
+#	Title
+#
+	thistitle="sea's FireFox UserAgent Changer"
+	sT "$thistitle ($script_version)"
+#	
+#	Variables
+#
+	retval=99
+	C=0
+	ffdistro=$(cat /etc/system-release|awk '{print $1}') & > /dev/zero
+	if [ ! "" = "$ffdistro" ] 
+	then	sE "Found /etc/system-release ($(cat /etc/system-release))" "Assuming distro: $ffdistro"
+	else	ffdistro="$(echo $distro|awk '{print $1}')"
+	fi
+	needHelp=false
+	this_dir=$HOME/.mozilla/firefox
+	value=$(ls  -l $this_dir|grep default|grep $(date +'%b')|awk '{print $9}')
+	this_source="$this_dir/$value/prefs.js"
+	thisHelp="ffua ($script_version)
+		\rỤsage: st tweak ffua [options]
+		\r\t-h\t\tDisplays this screen
+		\r\t-d [DISTRO]\tOverwrites default value \$(cat /etc/system/release|awk '{print \$1}') with given argument
+		\r\tKnown working distronames:
+		\r\t\t\t * arch
+		\r\t\t\t * fedora
+		\r\t\t\t * redhat
+		\r\t\t\t * slackware
+		\r\t\t\t * suse
+		
+		\r\tKnown non-working distronames:
+		\r\t\t\t * any Windows or Apple OS
+		\r\t\t\t * centos
+		"
+	requires_all="firefox"
+#
+#	Verify Requirements
+#
+	for app in $requires_all
+	do isInstalled $app || requires="$requires $app";done
+	if [ ! "" = "$(echo $requires)" ] 
+	then	sP "Installing $requires" "$WORK"
+		sInst $requires
+		if [ 0 -eq $? ]
+		then	ReportStatus 0 "Installed $requires"
+		else	ReportStatus 1 "Installed $requires"
+			exit 1
+		fi
+	fi
+#
+#	Check for argument
+#
+	args=( ${@} )
+	if [ ! -z "$1" ]; then
+		for arg in ${args[*]};do
+			D=$[ $C + 1 ]
+			case $arg in
+			# Help arguments
+			-\?|--\?|-h|-help|--h|--help)
+				needHelp=true	;;
+			# Place your arguments here
+			"-d")	ffdistro=${args[ $D ] }
+				unset args[$D]	;;
+			esac
+			unset args[$C]
+			let C++
+		done
+	fi
+#	
+#	Subs
+#
+	
+#
+#	Handle Arguments
+#
+	#[ ! 0 -eq $UID ] && sE "This script requires root rights." "$FAILURE" && exit 1
+	#[ -z "$1" ] && echo -e "$thisHelp" && exit $retval
+	[ $needHelp = true ] && echo -e "$thisHelp" && exit $retval
+#	
+#	Display
+#
+	#user_pref("general.useragent.override", "Mozilla/5.0 (X11; Linux x86_64; rv:2.0) Gecko/20100101 RedHat/4.0.1-2.el6.x86_64 Firefox/4.0.1 ");
+	if [ ! "" = "$this_source" ]
+	then	found="$(grep general.useragent.overwrite $this_source)" # > /dev/zero
+		FFVER=$(firefox -v|awk '{print $3}')
+		#FFVER=$(echo $FFVER|sed s,\.,\ ,g|awk '{print $1.$2}' )  #& > /dev/zero | grep -v process
+		newstr="user_pref(\"general.useragent.override\", "
+		newstr="$newstr \"Mozilla/5.0 (X11; $ffdistro Linux $(arch);"
+		newstr="$newstr  rv:$FFVER Gecko/20100101 $ffdistro/$(uname -r)"
+		newstr="$newstr  Firefox/$FFVER\");"
+		
+		sE "Writing:"
+		sE "$newstr"
+		sE
+		if [ ! "" = "$found" ]
+		then	sed s/"$found"/"$newstr"/g -i "$this_source" & > /dev/zero | grep -v process
+			ReportStatus $? "changed values"
+		else	echo -e "$newstr" >> "$this_source" & > /dev/zero | grep -v process
+			ReportStatus $? "Added string to: $this_source"
+		fi
+		
+	fi
+	if [ ! "" = "$(ps -e |grep firef)" ]
+	then	if ask "Restart browser now to apply changes?"
+		then	pkill firefox
+			firefox &
+		fi
+	fi

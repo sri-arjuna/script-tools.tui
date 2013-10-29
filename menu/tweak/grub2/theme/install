@@ -1,0 +1,54 @@
+#!/bin/bash
+#
+#	Description:	Instally grub2 themes
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea)
+#	Release Date:   2013.07.23
+#	Changed Date:	2013.07.23
+	script_version=0.1
+#
+#	Title
+#
+	if [ ! -f /usr/share/script-tools/st.cfg ]
+	then	alias sT="echo"
+		alias sP="printf"
+		alias sE="echo"
+		SUCCESS="[ yay :) ]"
+		FAILURE="[ noo :( ]"
+		PROGRESS="[ wait.. ]"
+	fi
+	sT "sea's Grub2 Theme Installer ($script_version)"
+	#[ ! 0 -eq $UID ] && sE "Script requires root rights!" && return 1
+#
+#	Variables
+#
+	def=/etc/default/grub
+	dir_themes=/boot/grub2/themes
+	dir_themes_d=""
+	#for d in $(ls $dir_themes);do [ -d "$dir_themes/$d" ] && themes="$themes $d";done
+#
+#	Arguments
+#	
+	this_source=""
+	for arg in $@
+	do	if [ -f "$arg" ]
+		then	if [ $arg = $(basename $arg) ]
+			then	sE "Found file in $(pwd)"
+				this_source="$(pwd)/$arg"
+			else	this_source="$arg"
+			fi
+		elif [ "-h" = "$arg" ]
+		then	echo -e "help screen"
+			return 99
+		fi
+	done
+#
+#	Display
+#
+	sP "Checking for installed themes..." "$WORK"
+	sE "Currently installed:" "$(echo $(yum list installed|grep grub|grep them))"
+	if ask "Install all grub2 themes from repo?"
+	then	list=$(yum search theme |grep grub2|awk '{print $1}')
+		sP "Installing $list" "$WORK"
+		sInst $list
+	fi

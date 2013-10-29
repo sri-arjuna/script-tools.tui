@@ -1,0 +1,36 @@
+#!/bin/bash
+# -------------------------------------------------------------------------------
+# | Project sea:    Package of small scripts for an easy set up of linux uses   |
+# | Description:    Replaces your background image from specified source        |
+# | Script by:      Simon A. Erat (sea)                                         |
+# | Contact:        http://forums.fedoraforum.org/member.php?u=183882   (eRats) |
+# | Date:           29.07.2011                                                  |
+# | FileVersion:    0.3                                                         |
+# -------------------------------------------------------------------------------
+
+
+# | Having trouble to run this file?
+# | Execute:        sudo chmod +x ~/.sea/pic/rndbg
+
+
+# | Includes
+    . ../../sea.cfg
+
+# | Variables
+    min=1
+    if [ ! -z $1 ] ; then opt="streched" ; else opt=$1; fi
+
+
+rndbg() {
+# | Check argument
+    val="$(rnd 0 2)" && echo "# | Get random value within range of predefined paths of rndpic: $val" || echo "# | Could not get random value.. Set to 0 now" && val=0
+
+    rndimg="$($seat/ui/rndpic $val)" && echo "# | Get random image name: success" || if [ ! -f "$seat/ui/rndpic" ]; then echo "# | File $seat/ui/rndpic does not exist."; else echo "# | Script error :(" ; fi
+
+# | Set image as background                         # | working (but not 'in' cron)
+    /usr/bin/gsettings set org.gnome.desktop.background picture-uri "file://$rndimg" && echo "# | Changed wallpaper to : $rndimg" || "# | Failure, could not change wallpaper"
+    /usr/bin/gsettings set org.gnome.desktop.background picture-options center
+    return 0
+}
+
+rndbg

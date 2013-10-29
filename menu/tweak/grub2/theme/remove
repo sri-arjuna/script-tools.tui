@@ -1,0 +1,37 @@
+#!/bin/bash
+#
+#	Description:	Removes an existing grub theme
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea)
+#	Release Date:   2012.12.23
+#	Changed Date:	2013.06.27
+	script_version=0.1
+#
+#	Title
+#
+	if [ ! -f /usr/share/script-tools/st.cfg ]
+	then	alias sT="echo"
+		alias sP="printf"
+		alias sE="echo"
+		SUCCESS="[ yay :) ]"
+		FAILURE="[ noo :( ]"
+		PROGRESS="[ wait.. ]"
+	fi
+	sT "sea's Grub2 Theme remover ($script_version)"
+	[ ! 0 -eq $UID ] && sE "Script requires root rights!" && return 1
+#
+#	Variables
+#
+	def=/etc/default/grub
+	dir_themes=/boot/grub2/themes/
+#
+#	Output
+#
+	sE "Please select which theme to remove:"
+	select theme in Back $(ls $dir_themes);do [ Back = $theme ] && return 0;break;done
+	if ask "Are you sure to remove $dir_themes$theme and all its sub content?"
+	then	sP "Removing content of $theme..." "$WORK"
+		rm -fr $dir_themes"$theme" && \
+			ReportStatus 0 "Removed $theme" || \
+			ReportStatus 1 "There was an error removing $theme from $dir_themes"
+	fi

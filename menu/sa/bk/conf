@@ -1,0 +1,176 @@
+#!/bin/bash
+#
+#	sea's Script Tools: The 3rd Generation
+#
+#	Description:	
+#			
+	script_version=0.1
+#	License:	GPL v3
+#	Created:	2013.05.05
+#	Changed:	2013.05.05
+#	Author: 	Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Resource:	  
+# 
+#	Script tools compatibility
+#
+	if [ ! -f /usr/share/script-tools/st.cfg ]
+	then	alias sT="echo"
+		alias sP="printf '\r'"
+		alias sE="echo"
+		SUCCESS="[ DONE :) ]"
+		FAILURE="[ FAILED :( ]"
+		PROGRESS="[ Working... ]"
+	else	[ -z $stDir ] && source /usr/share/script-tools/st.cfg
+	fi
+#
+#	Title
+#
+	thistitle="sea's Backup config"
+	sT "$thistitle ($script_version)"
+#	
+#	Variables
+#
+	retval=99
+	needHelp=false
+	thisHelp="st custom bk conf ($script_version)
+		\rỤsage: $0 [-h] [-xy] /path/to/file [file2]
+		\r\t-h\tDisplays this screen
+		\r\t-s\tShows the configuration file
+		\rReturns (from the last displayed):
+		\r\t0 \tOK
+		\r\t1 \tBAD
+		\r\t2 \tTHIRD
+		\r\t99 \thelp screen\n"
+	SETTINGS=$SEA_CFG_DIR/backup.conf
+	[ -f $SETTINGS ] && foundConf=true || foundConf=false
+	#echo $foundConf
+#	
+#	Subs
+#
+	
+#
+#	Execute Arguments
+#
+	if [ "$foundConf" = false ]
+	then	# Ask for settings
+		sT "Configure NAS"
+		if [ "" = "$(echo $(ls $SEA_NAS_DIR))" ]
+		then	sE "Please create a new NAS project:"
+			NAS_New #|| return 1
+			selected=$(sea_select $(ls $SEA_NAS_DIR))
+			#echo "in then"
+		else	selected=$(sea_select $(ls $SEA_NAS_DIR))
+			#echo "inb else $selected : $SEA_NAS_DIR : "
+		fi
+		NAS_BACKUP="$selected"
+		[ "" = "$(echo $NAS_BACKUP)" ] && return 1
+		# Covers, username, ip, devicename, domainname, mountpoint
+		sE "Selected:" "$NAS_BACKUP"
+		sE
+		#[ -z $XDG_CLOUD_DIR ] && XDG_CLOUD_DIR="$HOME/Cloud-Private"
+		NAS_REMOTE=$(input "Please provide the remote base dir: (/backups) ")
+		[ "" = "$(echo $NAS_REMOTE)" ] && NAS_REMOTE=/backups
+		sE "Selected:" "$NAS_REMOTE"
+		sE
+		
+		
+		sT "Configure backup occasion"
+		sE "How often do you want to make your full backup?"
+		select full_occ in daily weekly monthly yearly;do break;done
+		sE "How often do you want to make your incremental backup?"
+		select incr_occ in hourly daily weekly monthly;do break;done
+		sE
+		
+		
+		sT "Configure backup 'size'"
+		sE "Please select how many full backups you want to keep?"
+		select keep_month in $(seq 1 12) other;do
+			[ $keep_month = other ] && \
+				keep_month=$(input "Enter the number you want to keep: ")
+			break
+		done
+		sE "Full backups to keep:" "$keep_month"
+		sE
+		sE "Please select how many incremental backups you want to keep?"
+		select keep_weekly in $(seq 1 $[ 12 * $keep_month ] ) other;do
+			[ $keep_weekly = other ] && \
+				keep_weekly=$(input "Enter the number you want to keep: ")
+			break
+		done
+		sE "Incremental backups to keep:" "$keep_weekly"
+		sE
+		
+		sT "d"
+		
+		sT "Save Settings"
+		sP "Writing Settings to $SETTINGS" "$PROGRESS"
+		touch $SETTINGS
+		printf "# Default Settings for Backup Scripts
+# 
+#	NAS Settings
+#
+	NAS_BACKUP=$NAS_BACKUP
+	NAS_REMOTE=$NAS_REMOTE
+# 
+#	How often
+#
+	full_occ=$full_occ
+	incr_occ=$incr_occ
+#
+#	How many files
+#
+	full_limiter=$keep_month
+	incr_limiter=$keep_weekly\n" > "$SETTINGS" && retval=0 || retval=1
+		ReportStatus $retval "Saved Settings"
+		source $SETTINGS
+		
+		sE "Since this is the first time you set the settings," "i'm expecting them to be current."
+		if ask "Do you want to set up cron jobs now?"
+		then	echo
+		fi
+		
+		
+		sE "This said, exiting now."
+		return $retval
+	fi
+
+#
+#	Check for argument
+#
+	if [ ! -z "$1" ]; then
+		for arg in $@;do
+			case ${arg:0:2} in
+			[-]s)		cat $SETTINGS	;;
+			[-]a)		mode="var"	;;
+			# Diffrent help options
+			[-]h[elp])	needHelp=true	;;
+			[-]?)		needHelp=true	;;
+			esac
+		done
+	fi
+#	
+#	Show Help and Exit?
+#
+	[ $needHelp = true ] && echo -e "$thisHelp" && exit $retval
+	#[ -z "$1" ] && echo -e "$thisHelp" && exit $retval
+#	
+#	Display
+#
+	sE "What do you want to do?"
+	A="Show current config"
+	B="Change used NAS"
+	C="Change Intervalls"
+	D="Rewrite cron jobs"
+	E="Edit config file"
+	select task in Back "$A" "$B"  "$D" "$E";do # "$C"
+	case "$task" in
+	Back)	break	;;
+	"$A")	cat $SETTINGS ;;
+	"$B")	sE "Please select another NAS:"
+		selected=$(NAS_Select) && \
+		sed s/"$(grep NAS_B $SETTINGS)"/"\tNAS_BACKUP=$selected"/g -i $SETTINGS;;
+	"$C")	echo TODO ;;
+	"$D")	echo TODO cron jobs ;;
+	"$E")	sEdit $SETTINGS ;;
+	esac
+	done

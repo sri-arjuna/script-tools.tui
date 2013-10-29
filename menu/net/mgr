@@ -1,0 +1,418 @@
+#!/bin/bash
+#
+#	Description:	A script that aims to act like a service,
+#			in order to replace NetworkManager on
+#			minimal, home ('single') use computers.
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea), erat.simon æ gmail. com
+#	Release Date:   2012.11.01
+#	Changed Date:	2013.08.08
+#
+	script_version=1.0
+#
+#	Default paths
+#
+	# $SEA_WIFI_DIR is pre-defined to point at:
+	#	$XDG_CONFIG_DIR/script-tools/wifi
+	[ ! -d $SEA_WIFI_DIR ] && mkdir -p $SEA_WIFI_DIR
+	case $(isBased) in
+	redhat)		nm_dir=/etc/sysconfig/network-scripts	;;
+	# The two below are still to be updated, dont have the paths handy... low prio
+	arch)		nm_dir=/etc/sysconfig/network-scripts	;;
+	debian) 	nm_dir=/etc/sysconfig/network-scripts	;;
+	unkown) 	nm_dir=$(input "Where does NetworkManager (you) store its connection configuration?")	;;
+	esac
+	export nm_dir
+#
+#	Variables
+#
+	isWired=false
+	wifi=""
+	for w in $(list_device_internet nolo)
+	do	[ "w" = "${w:0:1}" ] && \
+			wifi=$w && \
+			[ ! "" = "$(echo $wifi)" ] && \
+			export $wifi
+	done
+#
+#	/* Use like a service */
+#
+	WAIT=4
+	WAIT_COUNT=4
+	RUN=loop
+	ping_target=( fedoraproject.org fedoraforum.org )
+	tempfile="$SEA_CACHE_DIR/nm-mgr"
+	CheckPath "$SEA_CACHE_DIR" #> /dev/zero
+	
+	#
+	#	Pseudo progress indicator
+	#
+	indi[0]="\\"
+	indi[1]="|"
+	indi[2]="/"
+	indi[3]="—"
+#
+#	Title
+#
+	title="sea's Network Manager ($script_version)"
+	sT "$title"
+	isInstalled NetworkManager && mode=nm || mode=raw
+	#[ ! $EUID -eq 0 ] && sE "Must be root to run this script." && return 1
+#
+#	Subs
+#
+	no_nm() { #
+	# Jumps in if NetworkManager is not running
+	# Requires dhclient, iw and wpa_supplicant
+		while [ "$RUN" = "loop" ] # Needs something better, but works for the moment
+		do	if [ "$mood" = "good" ] ; then	
+			#
+			#	"all good" output
+			#
+				dev_con=$(isConnected)
+				sP "Responding: $dev_con @ $(echo $thisSpot)" "${indi[$C]}"
+			#
+			#	Do some bling bling
+			#
+				((C++))
+				[ 4 -eq $C ] && C=0
+			elif [ $WAIT -eq $WAIT_COUNT ]
+			then	if CheckIP ${ping_target[$(rnd ${#ping_target]}} # && isConnected > /dev/zero && ! isDown $(isConnected) 
+				then	mood=good
+					if [ "w" = "${dev_con:0:1}" ];then
+						wifi_str="$(CheckWifiStrength $dev_con)" 
+						[ ! "" = "$(echo $wifi_str)" ] && \
+						wifi_str="( ${thisSpot:0:4} $[ 100 / 70 * $wifi_str ] )"
+					else	wifi_str=""
+				
+					fi
+				else	mood=bad
+				fi
+				WAIT_COUNT=0
+			elif [ "$mood" = "bad" ]
+			then	kill_network
+				#echo ":: no connection :(" 2&>1
+			#
+			#	Check if wire is pluged in
+			#
+				if isWired > /dev/zero
+				then	sE "Found cable in: $(isWired)" "$SUCCESS"
+					isDown $(isWired) && ifconfig $(isWired) up
+					sP "Enabling services for $(isWired)..." "$PROGRESS"
+					NetStartSimple $(isWired)
+					#echo ":: should be wired now" 2&>1
+					mood=good
+				elif [ ! "" = "$wifi" ]
+				then	sE "Found wireless: $wifi" "$SUCCESS"
+					thisSpot=""
+					isDown $wifi && ifconfig $wifi up
+					for spot in $(WifiListSSID $wifi);do
+						sP "Looking for config of: $spot" "$PROGRESS"
+						if [ -f $SEA_WIFI_DIR/$spot ] 
+						then	thisSpot="$thisSpot $spot"
+						elif [ -f $nm_dir/keys-$spot ] 
+						then	importNM $spot 
+							thisSpot="$thisSpot $spot"
+						fi
+					done
+				#	
+				#	Verify there is a spot configuration	
+				#
+					if [ "" = "$thisSpot" ]
+					then	sE "No configuration files found..."
+						sE "Please select the spot you want to connect:"
+						select spot in $(WifiListSSID $wifi);do break;done
+						input=$(input "Please enter the password for $spot : ")
+						wpa_passphrase $spot $input > $SEA_WIFI_DIR/$spot
+						thisSpot=$spot
+					fi
+				#
+				#	Maybe have a list of spots with configuration files
+				#	
+					for spot in $thisSpot;do
+						sE "Using config for spots:" "$thisSpot"
+					#
+					#	Start wifi
+					#
+						sP "Enabling services for $wifi..." "$PROGRESS"
+						WifiStartSimple $wifi $thisSpot
+						if [ 0 -eq $? ]
+						then	sE "Connection established with $wifi @ $thisSpot" "$SUCCESS" && \
+							mood=good 
+							clear
+							sH $@
+							sT "sea's Network Manager ($script_version)"
+							break
+						else	sE "Could not connect using $wifi on $thisSpot" "$FAILURE"
+						fi
+					done
+					#echo ":: should be wifi" 2&>1
+				else	sE "There is no wifi and probably no internet cable/wire to this device..."
+				fi
+			fi
+		#
+		#	Dont stress the computer, but keep it animated
+		#
+			sleep 1
+			((WAIT_COUNT++))
+		done
+	}
+	net_wpa_to_networkmanager() { # -w WPAFILE [ -nm NETWORKMANAGERFILE ]
+	# Creates a default configuration file as NetworkManager configuration
+	# from an existing wpa file (wpa_passphrase AP PW > wpafile), must be root
+		! isRoot && ReportStatus 1 "Must be root to export wpa to NM" && return 1
+		args=( ${@} )
+		C=0
+		[ "${#args[@]}" -lt 2 ] && \
+			ReportStatus 1 "Usage: net_wpa_to_networkmanager -w WPAFILE [ -nm NETWORKMANAGERFILE ]" && \
+			return 1
+		for arg in "${args[@]}"
+		do	D=$[ $C + 1 ]
+			case $arg in
+			"-export")
+				WPAFILE="${args[$D]}"
+				unset args[$C] args[$D]
+				;;
+			"-nm")	NMFILE="${args[$D}"
+				unset args[$C] args[$D]
+				;;
+			esac
+			let C++
+		done
+		sP "Scanning for $WPAFILE..." "$WORK"
+		[ -z $WPAFILE ] && [ ! "" = "$(ls $SEA_WIFI_DIR)" ] && select WPAFILE in "$(ls $SEA_WIFI_DIR)";do break;done
+		[ -z $NMFILE ] && NMFILE=$nm_dir
+		
+		if [ ! -f "$WPAFILE" ]
+		then	for wpadir in "$SEA_WIFI_DIR" /etc "$XDG_CONFIG_DIR/.wpa"
+			do	[ -f "$wpadir/$WPAFILE" ] && \
+					WPAFILE="$wpadir/$WPAFILE" && \
+					break
+			done
+		fi
+		[ ! -f "$WPAFILE" ] && ReportStatus 1 "Requires an existing wpafile!" && return 1
+		
+		sP "Analyzing $WPAFILE" "$WORK"
+		password="$(grep -i psk $WPAFILE|sed s/'='/' '/g|grep \"|sed s/'\"'/''/g|awk '{print $2}')"
+		cryptedpw="$(grep -i psk $WPAFILE|sed s/'='/' '/g|grep -v \"|awk '{print $2}')"
+		spotname="$(basename $WPAFILE)"
+		
+		if [ -f "$NMFILE" ] 
+		then	target="$NMFILE"
+		elif [ -f "$nm_dir/$NMFILE" ] 
+		then	target="$nm_dir/$NMFILE"
+		elif [ -d "$NMFILE" ]
+		then	target="$NMFILE/ifcfg-$spotname"
+		fi
+		
+		#echo $spotname
+		#echo $password
+		#echo "$address -- $uuid"
+		
+		#echo $target
+		sP "Writing content to $target" "$WORK"
+		cat > "$target" << EOF
+ESSID="$spotname"
+MODE=Managed
+KEY_MGMT=WPA-PSK
+TYPE=Wireless
+BOOTPROTO=dhcp
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_FAILURE_FATAL=no
+NAME=$spotname
+UUID=$uuid
+ONBOOT=yes
+HWADDR=$adress
+PEERDNS=yes
+PEERROUTES=yes
+IPV6_PEERDNS=yes
+IPV6_PEERROUTES=yes
+EOF
+	cat > $(echo "$target"|sed s/ifcfg/keys/g) << EOF
+WPA_PSK='$password'
+EOF
+		[ $? -eq 0 ] && chown root:root "$(echo $target|sed s/ifcfg/keys/g)" && chmod 600 "$(echo $target|sed s/ifcfg/keys/g)"
+		[ $? -eq 0 ] && ReportStatus 0 "Written $spotname to $target" && return 0
+		ReportStatus 1 "Could not save $spotname to $target, or could not restrict access"
+		return 1
+	}
+	nm_wired() { #
+	#
+	#
+		# No WIFI device found
+		sE "$INFO" "$INFO"
+		sT "Please report if it works or not, i dont have any wires left."
+		sE "$INFO" "$INFO"
+		
+		tmp=$(nmcli con list|grep ether)
+		thisAP=$(echo $tmp|awk '{print $1}')
+		tmp=$2
+		[ ! ${#tmp} -lt 36 ] && thisAP+=" $2"
+		nmcli dev connect "$thisAP"
+		ReportStatus $? "Connected with $thisAP"
+		return $?
+	}
+	nm_wifi() { #
+	# Connects to a wireless using nmcli
+	#
+		C=1 ; I=0
+		nmcli d list > "$tempfile"
+		installed=$(ls $nm_dir|grep ifcfg|sed s,-,\ ,g|awk '{print $2}') 2>&1 > /dev/zero 
+		gotExisting=false
+		
+		str=$(grep "AP\[$C\]" "$tempfile"|grep "BSSID"|awk '{print $2" "$3" "$4}')
+		while [ ! "" = "$(echo $str)" ]
+		do	sP "Parsing AP ($C) (${str})..." "[ ${indi[$I]} ] $WORK"
+			AP[$C]=$(grep  "AP\[$C\]" "$tempfile"|grep "\.SSID"|awk '{print $2" "$3" "$4}'|sed s/"'"/" "/g)	#"${str:1: ( - 1 ) }"
+			BSSID[$C]=$(grep  "AP\[$C\]" "$tempfile"|grep BSSID|awk '{print $2}')
+			((C++))
+			((I++))
+			[ $I -eq 4 ] && I=0
+			str=$(grep  "AP\[$C\]" "$tempfile"|grep "BSSID"|awk '{print $2}')
+		done
+		
+		gotExisting=false
+		for inst in $installed;do
+		 	check="$(echo ${AP[@]}|grep $inst)"
+			if [ ! "" = "$check" ]
+			then	thisAP=$inst
+				gotExisting=true
+				break
+			fi
+		done
+		
+		C=1
+		
+		if [ $gotExisting = false ]
+		then 	ReportStatus 0 "Found ${#AP[@]} AP and their according BSSID"
+			for f in ${BSSID[@]}
+			do	[ "" = "$f" ] && break
+				sE "$C: ${AP[$C]}" "${BSSID[$C]}"
+				((C++))
+			done
+			if [ ${#AP[@]} -eq ${#BSSID[@]} ]
+			then	sT "Please select an Adhoc Point"
+				select thisAP in "${AP[@]}"
+				do	#thisAP=${thisAP:1:(-1)}
+					#[ "'" = "${thisAP:0:1}" ] && thisAP=${thisAP:1}
+					#[ "'" = "${thisAP:${#thisAP}-1}" ] && thisAP=${thisAP:${#thisAP}-1}	
+					C=1 ; I=0
+					for num in $(seq 1 ${#AP[@]} )
+					do	sP "Retrieving BSSID for $thisAP" "[ ${indi[$I]} ] $WORK"
+						[ "${AP[$num]}" = "$thisAP" ] && \
+							thisBSSID=${BSSID[$num]} && \
+							break
+						let C++
+						let I++
+						[ $I -gt 4 ] && I=0
+					done
+					break
+				
+				done
+			else	ReportStatus 1 "Too many BSSID found."
+			fi
+			ReportStatus $? "Retrieved BSSID ($thisBSSID) for $thisAP"
+			[ "" = "$(echo $thisAP)" ] && \
+				ReportStatus 1 "Must select an AP..." && \
+				return 1
+		fi
+		
+		
+		
+		#sE "blub $thisAP"
+		#exit
+		
+		
+		keyfile="$nm_dir/keys-$(echo $thisAP)"
+		if isEmpty "$keyfile" > /dev/zero
+		then	rm "$keyfile"
+			ReportStatus $? "Deleted empty $keyfile"
+		else	sudo su -c "source $keyfile;export WPA_PSK PSK_WPA"
+			pw="$WPA_PSK"
+			[ "" = "$pw" ] && pw="$PSK_WPA"
+			[ ! "" = "$pw" ] && WPA_PSK="$pw"
+		fi
+		sudo chown root:root "$keyfile"
+		if [ ! -f "$keyfile" ]
+		then	if isRoot 
+			then	printf "\r"
+				question="Please type the password for $(echo $thisAP)"
+				pw=$(input "$question: ")
+				umask "$keyfile"
+				touch "$keyfile" && \
+					echo "WPA_PSK=\"$pw\"" > "$keyfile" && \
+					chmod 600 "$keyfile" && \
+					sudo chown root:root "$keyfile"
+				ReportStatus $? "Saved $pw to $keyfile"
+			else	ReportStatus 1 "You need to be root to write config files"
+				return 1
+			fi
+		#else	echo $WPA_PSK
+		fi
+		sE "Connecting to $thisAP ($thisBSSID)" "$WORK"
+		tmp=$(nmcli c status|grep -iv name|awk '{print $1}')
+		[ ! "" = "$tmp" ] && nmcli c down id $tmp 
+		cmd="sudo nmcli dev wifi connect $thisAP password "
+		cmd+=" $(sudo grep WPA_PSK $keyfile|sed s,=,' ',g|sed s,\",,g|awk '{print $2}') "
+		cmd+=" iface $(ifconfig|grep ^w|sed s,:,\ ,g|awk '{print $1}')"
+		 # \"$thisBSSID\" " # password "$(sudo grep WPA_PSK $keyfile|sed s,=,' ',g|awk '{print $2}')" #AES #WPA #"$pw"
+		#echo $cmd
+		$cmd
+		ReportStatus $? "Connected with $thisAP ($(echo $thisBSSID))" "$DONE"
+	}
+#
+#	Parse Argument
+#
+	for a in $@
+	do	case $a in
+		-h|-help)	echo -e "st net mgr ($script_version)
+				\r\t-h[help]\tThis screen
+				\r\t-import \tImports Networksettings from NM to ST
+				\r\t\t\t-nm NETORKMANAGERFILE   [ -w WPAFILE ]
+				\r\t-export \tExports Networksettings from ST to NM
+				\r\t\t\t-w WPAFILE   [ -nm NETORKMANAGERFILE ]
+				\r\t-b[rute]\tDisabled NM and use dconf, iw, and wpa_supplicant
+				
+				\rNOTE:
+				\r\tFor NETWORKMANGERFILE you just use either the device or the AP's name.
+				\r\tNETWORKMANAGERFILE will be searched and written to $nm_dir by default.
+				\r\tIf WPAFILE is not provided with a path, its been searched in /etc $SEA_WIFI_DIR
+				\r\tIf there is non found in any of these paths, it fails with 1
+				"
+				exit 99
+				;;
+		-import)	sT "Import settings from NetworkManager"
+				echo todo
+				exit $?		;;
+		-export)	sT "Export settings to NetworkManager"
+				net_wpa_to_networkmanager  $@
+				exit $?		;;
+		-b|-brute)	no_nm	
+				exit $?
+				;;
+		esac
+	done
+#
+#	NMCLI Handling
+#
+	#nm_list_wifi|ether|device 			nmcli d|grep -iv typ
+	#nm_con_wifi|ether
+	
+	
+	if [ $mode = "raw" ]
+	then	no_nm
+	else	unset AP[@] BSSID[@]
+		if [ "" = "$(echo $wifi)" ]
+		then	nm_wired
+		else	nm_wifi
+		fi
+	fi
+	#sudo cat "$keyfile"
+	PSK_WPA=""
+	WPA_PSK=""
+	pw=""
+	export PSK_WPA WPA_PSK

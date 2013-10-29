@@ -1,0 +1,26 @@
+#!/bin/bash
+#
+#	Shows current hostname and asks to change
+#			
+	script_version=0.1
+#	License:	GPL v3
+#	Created:	2013.07.18
+#	Changed:	2013.07.18
+#	Author: 	sea ; < erat DOT simon æ gmail D0T com >
+#	Resource:	
+# 
+#	Title
+#
+	thistitle="sea's Hostname Handler"
+	sT "$thistitle ($script_version)"
+#	
+#	Display
+#
+	sE "Current hostname:" "$(hostname)"
+	if ask "Change it?"
+	then	[ ! 0 -eq $UID ] && sE "This script requires root rights." "$FAILURE" && exit 1
+		new=$(input "What is the new hostname: ")
+		echo "$new" > "/etc/hostname" && hostname "$new"
+		ReportStatus $? "Changed hostname to $new"
+	else return 6
+	fi

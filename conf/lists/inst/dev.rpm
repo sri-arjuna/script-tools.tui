@@ -1,0 +1,6 @@
+createrepo
+fedora-packager
+rpm-*
+rpmconf
+rpmdevtools
+rpmlint

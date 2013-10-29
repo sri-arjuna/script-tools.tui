@@ -1,0 +1,58 @@
+#!/bin/bash
+#
+#	sea's LUKS Handler
+#
+#	Author: 		Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created (y.m.d):	2013.02.19
+#	Changed:		2013.02.19
+#	License:		GPL v3
+	script_version=0.1
+#
+#
+#	Title
+#
+	sT "sea's SELinux handler ($script_version)"
+	[ ! 0 -eq $EUID ] && sE "Requires root access." && return 1
+#
+#	Variables
+#
+	
+#
+#	Subs
+#
+	isLuks() { # 
+	# Queries lsblk for luks or crypt 
+	# Returns true if found, false if none.
+		var=$(lsblk | grep -i luks)
+		[ "" = "$var" ] && var=$(lsblk | grep -i crypt)
+		[ "" = "$var" ] && return 0 || return 1
+	}
+	luks_list() { #
+	#
+	#
+		echo a
+	}
+	hdd_list() { #
+	#
+	#
+		fdisk /dev/[sh]d[az] -l|grep Dev -A5|grep -v Dev|awk '{print $1}'
+	}
+	luks_sdf() { #
+	#
+	#
+		echo a
+	}
+#
+#	Menu
+#
+	hdd_list
+	exit
+	
+	select task in Back RelabelFS RelabelHome ToggleSE
+	do	case $task in
+		Back)		break
+				;;
+		*)	echo other	;;
+		esac
+	done
+	

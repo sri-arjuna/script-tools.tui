@@ -1,0 +1,149 @@
+
+# ------------------------------------------------------------------------------
+# | sea's Script Tools: The 3rd Generation
+# | File Description:	Contains functions starting with "Check"
+#	Script Version:		0.1
+# | Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+# | Created (y.m.d):    2012.06.10
+# | Changed:            2013.08.16
+# | License:            GPL v3
+# | Modified By:        
+# | Resource:           
+# | Special Thanks:     
+# ------------------------------------------------------------------------------
+# | Title
+    #sT " ($script_version)"
+# |
+# | Variables
+    
+# |
+# | One Liners
+    
+# |
+# | Subs
+    #
+    #	Filesystem
+    #
+	CheckPath() { # /abso/lute/path
+	# Prints information to stdout
+	# Returns 0 for the existence or successfull creation, 1 otherwise
+		test "" = "$1" && sE "Usage: CheckPath /usr/share/example" && return 1
+		sP "Checking for: $1"		"$WORK"
+		if [ -d "$1" ] 
+		then	sE "Found: $1" 		"$DONE" 
+			return 0
+		else	mkdir -p "$1"  && \
+			sE "Created: $1" 	"$DONE" 
+			return 0
+		fi
+		sE "Coult not create: $1"	"$FAIL" 
+		return 1
+	}
+	CheckDevice() { # sda|hdb|usb|dvd|cd BETA BETA
+	# Prints information to stdout
+	# Returns 0 for the existence, 1 otherwise
+		test "" = "$1" && sE "Usage: CheckDevice sda|hdb|usb|dvd|cd" && return 1
+		sP "Checking for: $1"		 "$PROGRESS"
+		
+		case ${1:0:2} in
+		sd|hd|dv|cd)	retval=$(ls /dev|grep $1)	
+						test ! "" = "$retval" && \
+							retval=found || retval=didnt 
+						;;
+				us)		tmp=$(ls /dev/input/by-id/usb-* -rs )
+						retval=""
+						for ret in $tmp; do
+							checkret=$(echo $retval|grep $ret)
+							if [ "" = "$checkret" ]
+							then	ret=$(basename $ret)
+									retval="$retval ${ret:4}"
+							fi
+						done
+						;;
+		esac
+		
+		if [ ! usb = $1 ]
+		then	if [ found = $retval ]
+				then	sE "Found: /dev/$1"		"$SUCCESS"
+						return 0
+				else	sE "Not found: /dev/$1"	"$FAILURE" 
+						return 1
+				fi
+		else	if [ ! "" = "$retval" ]
+				then	for ret in $retval;do sE "Found USB: $ret" "$SUCCESS";done
+				else	sE "No USB devices found" "$FAILURE"
+				fi
+		fi
+	}
+	#
+	#	Networking
+	#
+	CheckIP() { # IPv4
+	# Pings given argument and returns success (0) if
+	# there is a responce other than 0, false (1) otherwise
+		test "" = "$1" && sE "Usage: CheckIP google.com|127.0.0.1" && return 1
+		
+		sP "Waiting for response from: $1" "$PROGRESS"
+		tmp=$(ping -c 1 $1)
+		parseSTR=$(echo "$tmp" | grep received)
+		pRec=$(echo $parseSTR | awk '{print $5}' )
+		pVal=$(echo $parseSTR | awk '{print $4}' )
+		
+		if [ "1" = "$pVal" ]
+		then	sE "Responding: $1"	"$SUCCESS"
+			retval=0
+		else	sE "Didnt answer: $1"	"$FAILURE"
+			retval=1
+		fi
+		return $retval
+	}
+	CheckWifiStrength() { # WIFI
+	# Returns signal strength
+	#
+		tmp=$(iwconfig $1|grep -i link|awk '{print $2}')
+		echo ${tmp:8: ( -3 ) }
+	}
+	DownloadFile() { # ONLINEFILE  [ LOCALPATH ]
+	# Display download progress using curl
+	# Return 0 if download completes successfully, 1 otherwise
+		test "" = "$1" && sE "Usage: DownloadFile http://adress.org/file.tgz  [ /nas/pub/dl ]" && return 1
+		test "" = "$2" && lPath=$(pwd) || lPath="$2"
+	
+		sP "Testing curl..." "$PROGRESS"
+		test "" = "$(which curl)" && sInst curl
+		oURL="$1"
+		oFile="$(basename $oURL)"
+		sP "Testing $lPath/$oFile"		"$PROGRESS"
+		if [ -f $lPath/$oFile ]
+		then	sE "File exists..."		"$SUCCESS"
+				if ask "Overwrite existing file?"
+				then	rm -f $lPath/$oFile
+						retval=dl
+				else	retval=skip
+				fi
+		else	retval=dl
+		fi
+		
+		if [ dl = $retval ]
+		then	sP "Downloading $oFile..."		"$PROGRESS"
+				curl -o $lPath/$oFile $oURL && \
+					sE "Downloaded: $oFile" 	"$SUCCESS" && \
+					return 0 || \
+					sE "NOT downloaded: $oFile"	"$FAILURE"
+				return 1
+		elif [ skip = $retval ]
+		then	sE "File exists: $oFile" "$SKIP"
+				return 0
+		else	sE "Error..." "$FAILURE"
+				return 1
+		fi
+	}
+	alias CheckDownload=DownloadFile
+	CheckSMBC() {
+		SMBC="$(which smbclient)"
+		if [ "" = "$SMBC" ]
+		then	sE "Samba Client is missing, installing now:" "Hit CTRL+C _2_ times to abort!"
+				sInst samba-client cifs-utils
+				export readonly SMBC="$(which smbclient)"
+		fi
+	}

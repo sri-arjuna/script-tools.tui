@@ -1,0 +1,118 @@
+#!/bin/bash
+#
+#	SSC - sea Script Tools
+# 	File Description:	Helps you to generate a BB formated signature of your OS
+	script_version=0.7
+# 	Date (created):		2011.12.16
+# 	Date (changed):		2012.09.28
+#  	Script by:		Simon A. Erat (sea)
+# 	Resource:		http://forums.fedoraforum.org/showthread.php?t=274018
+# 	Special Thanks: 	PabloTwo
+#
+#
+#	Title
+#
+	sT "Signature Generator ($script_version)"
+#
+#	Variables
+#
+	mainlist="DEVICE CPU RAM SWAP GRAPHIC SOUND DISTRO KERNEL"
+	fcolor=" Orange DarkOrange Red DarkRed DimGray Gray Silver Yellow YellowGreen Green Lime Olive DarkOliveGreen DarkGreen Purple DarkOrchid Plum LightBlue PaleGreen Teal Blue DeepSkyBlue DarkSlateBlue Navy RoyalBlue "
+	showThis=""
+	showThisBB=""
+	retval=99
+	needHelp=false
+	noBB=false
+	thisHelp="st tweak siggen ($script_version)
+		\rỤsage: siggen [-h] [-nobb]
+		\r\t-h\tDisplays this screen
+		\r\t-nobb\tSkips the color questions for bbcode disabled forums
+		\rReturns (from the last displayed):
+		\r\t0 \tOK
+		\r\t1 \tFailed
+		\r\t2 \tMissing rights (no sudo)
+		\r\t99 \thelp screen\n"
+#
+#	One Liners
+#
+	ask4info() 	   { printf "\r" ; read  -p "Show '$1' ? (y/n)" -n1 retval ; printf "\n" ; test "y" = "$retval" && return 0 || return 1 ;  }
+	LabelColor()   { select color in $fcolor ; do lblColor=$color ; break ; done  ; }
+	ValueColor()   { select color in $fcolor ; do valColor=$color ; break ; done  ; }
+	ShowItem()	   { echo "[color=$lblColor]$1:[/color] [color=$valColor]$2[/color]" ; }
+	test "" = "$(rpm -q dmidecode)" && sudo yum install -y dmidecode > /dev/zero
+#
+#	Check for argument
+#
+	for arg in $@;do
+		case $arg in
+		-nobb)		noBB=true	;;
+		# Diffrent help options
+		[-]-h[elp])	needHelp=true	;;
+		[-]?)		needHelp=true	;;
+		esac
+	done
+	[ $needHelp = true ] && echo -e "$thisHelp" && exit $retval
+	[ ! 0 -eq $UID ] && sE "This script requires sudo access." "$INFO" #&& exit 1
+#
+#	Subs
+#
+	if [ $noBB = false ] ; then
+		sE "Please select a color for the labels:" " " && LabelColor
+		sE "Please select a color for the values:" " " && ValueColor
+	fi
+#
+#	Display
+#
+	sigDevType=$(sudo dmidecode -t3|grep "Type:"|awk '{print $2}')
+	retval=$?
+	sigDevName=$(sudo dmidecode -t2|grep "Manuf"|awk '{print $2}')
+	sigDevProd=$(sudo dmidecode -t1|grep "Product Name:")
+	sigDevProd="$(echo ${sigDevProd:15})"
+	sigDevice="$sigDevType: $(Capitalize $sigDevName) $sigDevProd"
+	sigCPUCores=$(sudo dmidecode -t4 | grep "Core Count:"|awk '{print $3}')
+	sigCPUVendor=$(sudo dmidecode -t4 | grep "Manuf"|awk '{print $2}')
+	sigCPUSpeed=$(sudo dmidecode -t4 | grep "Current"|awk '{print $3}')
+	sigCPU="CPU: $(Capitalize $sigCPUVendor) $sigCPUCores*$sigCPUSpeed Mhz"
+	sigRAMamount=$(sudo dmidecode -t17 | grep "Size" | awk '{print $2}')
+		amount=0
+		for line in $sigRAMamount ; do
+			#echo "line amount: $line"
+			amount=$[ $amount + $line ]
+		done
+	sigRAMamount="$amount MB"
+	sigRAMtype=$(sudo dmidecode -t17 | grep "Type:" | awk '{print $2}')
+	sigRAMtype=$(echo $sigRAMtype|awk '{print $1}')
+	sigRAM="$sigRAMamount $sigRAMtype"
+	
+	sigDistro="$(cat /etc/system-release|awk '{print $1" "$3}')"
+	
+	[ ! -z $XDG_CURRENT_DESKTOP ] && \
+		sigDE="$XDG_CURRENT_DESKTOP" || \
+		sigDE=$(Capitalize $(basename $DESKTOP_SESSION))
+	
+	if [ $noBB = false ] ; then
+		sigDeviceBB=$(echo $(ShowItem "$sigDevType" "$(Capitalize $sigDevName) $sigDevProd"))
+		sigCPUBB=$(echo $(ShowItem "CPU" "$(Capitalize $sigCPUVendor) $sigCPUCores*$sigCPUSpeed Mhz"))
+		sigRAMBB=$(echo $(ShowItem "RAM" "$sigRAM"))
+		sigDistroBB=$(echo $(ShowItem "OS" "$sigDistro"))
+		sigDEBB=$(echo $(ShowItem "DE" "$sigDE"))
+	fi
+#	
+#	Which to display?
+#
+	showThisBB="$sigDeviceBB $sigCPUBB $sigRAMBB $sigDistroBB $sigDEBB"
+	showThis="$sigDevice, $sigCPU, RAM: $sigRAM, OS: $sigDistro, DE: $sigDE"
+
+	if [ $noBB = false ] ; then
+		sE 
+		sT "Your BB signature code is:" 
+		echo "$showThisBB"
+		sE
+	fi
+	sT "Your signature is: long"
+	sE "$showThis"
+	sE
+	sT "Your signature is: fluent"
+	sE "$sigDistro with $sigDE on a $(Capitalize $sigDevName) $sigDevProd with $sigCPUCores cores at $sigCPUSpeed Mhz and $sigRAMamount of ram."
+	sE
+	return $retval

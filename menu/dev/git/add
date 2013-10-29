@@ -1,0 +1,38 @@
+#!/bin/bash
+#
+#	Desription:	Handles GIT Commands - Add
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea) ; < < erat . simon @ gmail . com >
+#	Created:	2013.08.25
+#	Changed:	2013.08.28
+	script_version=0.3
+#
+#	Title
+#
+	title="sea's GIT Handler - Add"
+	sT "$title ($script_version)"
+#
+#	Variables
+#
+	lbl=""
+	args=( $(echo "$4" "$5" "$6" "$7" ))
+	for arg in "${args[@]}" ;do
+		[ ! "$SEA_DEV_DIR/" = "$SEA_DEV_DIR/$arg" ] && \
+			[ -d "$SEA_DEV_DIR/$arg" ] && \
+			lbl="$arg"
+		[ "-h" = "$arg" ] && \
+			echo -e "add ($script_version)
+				\rUsage: st dev git add [LABEL]
+				\rAdds a new GIT configuration to selected/provided project LABEL.
+				\r" && return 99
+	done
+#
+#	Display
+#
+	[ -z $lbl ] && \
+		sE "Please select a project where GIT should be added:" && \
+		select lbl in $(PRJ_Select);do break;done
+	source "$SEA_DEV_DIR/$lbl/conf"
+	sE "Selected project:" "$prj_name"
+	GIT_New  "$lbl"
+	#ReportStatus $? "Added git configuration to $prj_name"

@@ -1,0 +1,36 @@
+#!/bin/bash
+# ---------------------------------------------------------------------------------------
+# | Project sea:	Package of small scripts for an easy set up of linux uses	|
+# | Description:	Adds a weekly backup job to cron				|
+# | Script by:		Simon A. Erat (sea)						|
+# | Contact:		http://forums.fedoraforum.org/member.php?u=183882   (sea)	|
+# | Date (created):	2011.07.24 (Year/Month/Day)					|
+# | Date (changed):	2011.09.06 							|
+# | FileVersion:	0.5								|
+# | Resource:		http://tldp.org/LDP/LGNET/133/cherian.html			|
+# |--------------------------------------------------------------------------------------
+# | sea Sleep time
+# |
+    curfile=$seatt/cronjobs.tmp
+    cleanup "$curfile"
+    cmdBkup="/home/$seaUser/.sea/back/up"
+    options="daily weekly monthly yearly CANCEL"
+    bsize="small large CANCEL"
+# |
+# | Getting started
+    echo -e "# | Please select an intervall for cron to run backup.\t\t\t | #"
+    select var in $options ; do
+    	if [ "CANCEL" = "$var" ] 
+    		then echo "# | Setup of backup was aborted by user.." && return 1 
+    		else cmdBkup="@$var $cmdBkup" && break
+    	fi
+    done
+# |
+# | Handle jobs
+    cronAdd   "$cmdBkup" "$curfile"
+# |
+# | Show current jobs
+    cronList
+# |	
+# | Cleanup
+    cleanup "$curfile"

@@ -1,0 +1,37 @@
+#!/bin/bash
+	script_version=0.1
+	archs="	i386	ppc	ppc64	x86_64	arm	armhfp		s390	s390x	"
+	vers="16 17 rawhide"
+	baseurl="http://mirrors.fedoraproject.org/publiclist/Fedora"
+	baseftp="http://mirror.switch.ch/ftp/mirror/fedora/linux/releases"
+	types="dvd netinst live"
+	lives="Desktop KDE"
+	
+	
+	sT "sea's iso downloader for Fedora "
+	if ask "Use your current architecture ($(arch))?"
+	then	arch=$(arch)
+	else	sE "Please select the arch you want to donwload:"
+			select arch in $archs;do break;done
+	fi
+	
+	sE "Please select the release you want to download:"
+	select ver in $vers;do break;done
+	
+	sE "Please select the type of the iso:"
+	select typ in $types
+	do	case $typ in
+		"dvd")		dl_url="$baseftp/$ver/Fedora/$arch/iso/Fedora-$ver-$arch-DVD.iso "	;;
+		"netinst")	dl_url="$baseftp/$ver/Fedora/$arch/iso/Fedora-$ver-$arch-netinst.iso "	;;
+		"live")		sE "Select 'Desktop' for Gnome3 or the appropriate name"
+					select live in $lives;do break;done
+					dl_url="$baseftp/$ver/Live/$arch/Fedora-$ver-$arch-live-$live-iso"	;;
+		
+		esac
+		break
+	done
+	
+	
+	
+	test "" = "$XDG_DOWNLOAD_DIR" && cd $HOME || cd $XDG_DOWNLOAD_DIR
+	wget $dl_url

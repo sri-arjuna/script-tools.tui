@@ -1,0 +1,52 @@
+#!/bin/bash
+# ------------------------------------------------------------------------------
+# | sea's Script Tools: The 3rd Generation
+# | File Description:	Handle Login Manager things - LXDM
+	script_version=0.1
+# | Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+# | Created (y.m.d):    2012.05.30
+# | Changed:            2012.05.30
+# | License:            GPL v3
+# | Modified By:        
+# | Resource:           
+# | Special Thanks: 
+# ------------------------------------------------------------------------------
+# | Title
+	sT " ($script_version)"
+	test ! isRoot && sE "Requires root rights..." "$FAILURE" && return 1
+# |
+# | Vars
+	lxdm_conf=/etc/lxdm/lxdm.conf
+	search_term="autologin="
+	status=$(sudo grep "$search_term" $lxdm_conf)
+# | One liners
+
+# |
+# | Display
+	sP "Change autologin User for LXDM..." "$PROGRESS"
+
+	if [ "${status:0:1}" = "#" ]
+	then	lmusr=${status:2}
+			lmusr=${lmusr:${#search_term}}
+			SF="# $search_term"
+			RW="$search_term"
+			go="enabled"
+	else	lmusr=${status}
+			lmusr=${lmusr:${#search_term}}
+			SF="$search_term"
+			RW="# $search_term"
+			go="disabled"
+	fi
+
+	sE "Current user:" "$lmusr"
+	sE "Please select the user for autologin:"
+	select newUsr in back $(ls /home --hide=lost+found);do break;done
+
+	test back = "$newUsr" && return 1
+
+	SF=$SF$lmusr
+	RW=$RW$newUsr
+
+	sudo sed -i s/"$SF"/"$RW"/g $lxdm_conf && \
+		sE "Successfully set autologin to $newUsr" "$SUCCESS" ||\
+		sE "Autologin is still set to $lmusr" "$FAILURE"

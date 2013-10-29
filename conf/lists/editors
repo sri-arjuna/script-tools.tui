@@ -1,0 +1,2 @@
+GUI=(gedit leafpad kedit )
+CLI=(nano vi vim ed)

@@ -1,0 +1,92 @@
+#!/bin/bash
+#
+#	Handles some SELinux tasks
+#
+#	Author: 		Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created (y.m.d):	2013.02.19
+#	Changed:		2013.02.19
+#	License:		GPL v3
+	script_version=0.2
+#
+#
+#	Title
+#
+	sT "sea's SELinux handler ($script_version)"
+	[ ! 0 -eq $EUID ] && sE "Requires root access." && return 1
+#
+#	Subs
+#
+	ToggleSE() { # 
+	# Toggles current SELinux status
+	#
+		case $(getenforce) in
+		Enforcing)	act=Dis
+				
+				num=0  	 # zero to turn off
+					;;
+		Permissive)	act=En
+				num=1	;;
+		*)		sE "Error: $(getenforce)" "$FAIL"
+				exit 1	;;
+		esac
+		
+		pre=abling
+		post=abled
+		sP "$act$pre SELinux..." "$PROGRESS"
+		setenforce $num && rv=0 || rv=1
+		[ $rv -eq 0 ] && done="$DONE" || done="$FAIL"
+		sE "$act$post ($(getenforce)) SELinux" "$done"
+		#ReportStatus $rv "$act$post ($(getenforce)) SELinux"
+		return $rv
+	}
+#
+#	Arguments
+#
+	for arg in $@;do
+	case $arg in
+	-h)	echo -e "sel, a SELinux handler ($script_version)
+			\rUsage:\t# st sa sel [args]
+			\r\t-h\t\t\tShows this help screen
+			\r\ttog|toggle\t\tToggles current SELinux status
+			\r\t-rlfs|relabelfs \tSets system to be relabeled at next boot
+			\r\t-rlh|relabelhome\tRestores labels in /home
+			"
+			exit 99	;;
+	"tog"|"toggle")	ToggleSE
+			exit $?	;;
+	"-rlfs"|relabelfs)
+			touch /.autorelabel
+			ask "Reboot now? " && \
+				reboot || \
+				sE "Please reboot to apply changes!"
+			exit
+				;;
+	"-rlh"|relabelhome)
+			sP "Relabeling /home, this may take a while..." "$WORK"
+			/sbin/restorecon -v -R /home
+			ReportStatus $? "Restored /home"
+			exit
+				;;
+	esac
+	done
+#
+#	Menu
+#
+	select task in Back RelabelFS RelabelHome ToggleSE
+	do	case $task in
+		Back)		break
+				;;
+		RelabelFS)	touch /.autorelabel
+				ask "Reboot now? " && \
+					reboot || \
+					sE "Please reboot to apply changes!"
+				;;
+		RelabelHome)	touch /.autorelabel
+				ask "Reboot now? " && \
+					reboot || \
+					sE "Please reboot to apply changes!"
+				;;
+		ToggleSE)	ToggleSE
+				;;
+		esac
+	done

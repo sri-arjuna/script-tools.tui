@@ -1,0 +1,145 @@
+
+#
+#	Description:	Module file for sea's scriptedNetworkManager
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea), erat.simon æ gmail. com
+#	Release Date:   2012.11.01
+#	Changed Date:	2012.11.08
+#
+	list_device_internet() { # [ nolo ]
+	# Returns an array of available internet devices
+	#
+		list_all=""
+		veryraw=$(cat /proc/net/dev|grep ":"|awk '{print $1}')
+		for r in $veryraw;do list_all="$list_all ${r:0:(-1)}";done
+
+		if [ "nolo" = "$1" ]
+		then	for o in $list_all
+			do	test ! "$o" = "lo" && \
+					printf " $o "
+			done
+		else	for o in $list_all
+			do	printf " $o "
+			done
+		fi
+	}
+	importNM() { # SSID
+	# Sources the key-name file and generates a wpa configuration file
+	# for the supplied SSID|SPOT-NAME
+		[ "" = "$1" ] && sE "Usage: importNM \"Name-of-Spot-1234\""  "$FAILURE" && return 1
+		thisFile=$nm_dir/keys-$1
+		[ ! -f $thisFile ] && sE "There is no key file for $1" "$FAILURE" && return 1
+		source $thisFile
+		wpa_passphrase $1 $WPA_PSK > $ST_USER_WIFI/$1 && \
+			retval=0 || retval=1
+		[ 0 -eq $retval ] && \
+			sE "Encrypted password for $1" "$SUCCESS" || \
+			sE "Could not save encrypted password of $1" "$FAILURE"
+		return $retval
+	}
+	isConnected() { #
+	# If there is an ip address other than localhost
+	# returns the active device and 0, 1 if no ip was found
+		retline=$(ip addr|grep [0-9].[0-9].[0-9].[0-9]|grep -v 127.0.0.1)
+		device=""
+		if [ ! "" = "$retline" ]
+		then	device=$(echo $retline|awk '{print $7}')
+			retval=0
+		else	retval=1
+		fi
+		[ 0 -eq $retval ] && \
+			echo $device
+		return $retval
+	}
+	isDown() { # DEVICE
+	#
+	#
+		[ "" = "$1" ] && sE "Usage: isDown p3p1"  "$FAILURE" && return 1
+		respond=$(ip addr | grep BROAD | grep $1 | grep DOWN|grep -v UP)
+		[ ! "" = "$respond" ] && \
+			return 0 || return 1
+	}
+	isPluged() { # DEVICE
+	# Best guess to get a chance if the wire is pluged in.
+	# BETA
+		[ "" = "$1" ] && sE "Usage: isPluged p3p1"  "$FAILURE" && return 1
+		tmpfile=/sys/class/net/$1/carrier
+		respond=""
+		[ -k $tmpfile ] && \
+			respond=$(cat $tmpfile) > /dev/zero || respond=0
+		#respond=$(ethtool $1|grep Link|awk '{print $3}')
+		[ "1" = "$respond" ] && retval=0 || retval=1
+		[ 0 -eq $retval ] && \
+			sE "$1 is probably wired" "$SUCCESS" || \
+			sE "Is there no wire?" "$FAILURE"
+		return $retval
+	}
+	isWired() { #
+	# Checks internetdevices not starting with "w"
+	# if they are probably pluged in.
+		for dev in $(list_device_internet nolo)
+		do	[ ! "w" = "${dev:0:1}" ] && \
+				isPluged $dev && \
+				echo $dev && \
+				return 0
+		done
+		return 1
+	}
+	kill_network() { # Brute force method killing possible blockers
+	#
+	#	Variables
+	#
+		list_kill=""
+		list="wpa_supplicant dhclient"
+	#
+	#	Action: pkill & kill list
+	#
+		for inet in $list;do
+			pkill $inet
+			list_kill="$list_kill $(ps -e|grep $inet|awk '{print $1}')"
+		done
+	#
+	#	Action: kill
+	#
+		for toKill in $list_kill
+		do	[ ! "" = "$(ps -e|grep $toKill)" ] && \
+				kill $toKill
+		done
+	}
+	NetStartSimple() { # DEVICE
+	# Simple and brute starting
+	#
+		pkill dhclient
+		isDown $1 && ip link set $1 up 
+		dhclient -B $1
+	}
+	WifiStartSimple() { # DEVICE SSID
+	# Simple and brute starting
+	#
+		[ "" = "$2" ] && sE "Usage: WifiStartSimple DEVICE SSID" && return 1
+		[ ! 0 = $UID ] && sE "Requires root rights." && return 1
+		pkill dhclient
+		pkill wpa_supplicant
+		isDown $1 && ip link set $1 up 
+		wpa_supplicant -i $1 -c $ST_USER_WIFI/$2 & > /dev/zero
+		dhclient -B $1
+	}
+	WifiListSSID() { # WIFI
+	# 
+	#
+		[ "" = "$1" ] && sE "Usage: WifiListSSID DEVICE" && return 1
+		isDown $1 && ip link set $1 up
+		iw $1 scan | grep SSID | awk '{print $2}'
+	}
+	PlugedChance() { #
+	# not used 
+	# Many thanks to stevea on fedoraforum to help me understand better.
+	# http://forums.fedoraforum.org/showthread.php?p=1612665
+		for l in $(ip link | grep -v LOOPBACK |  grep "^[0-9]" | cut -d' ' -f2-3 | tr -d ' ')
+		do
+		    echo -en "$(echo $l|cut -d\< -f1)\t"
+		    echo $l|grep -q "[<,]UP[,>]" \
+			&& (echo $l|grep -q "[<,]NO-CARRIER[,>]" && echo "LINK DOWN" || echo "LINK UP" ) \
+			|| echo "INTERFACE DOWN"
+		done
+	}

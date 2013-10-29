@@ -1,0 +1,148 @@
+
+# ------------------------------------------------------------------------------
+#	sea's Script Tools: The 3rd Generation
+#	File Description:	
+#	Version:	0.3
+#	Author:		Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created:	2012.05.17
+#	Changed:	2013.06.05
+#	License:	GPL v3
+# ------------------------------------------------------------------------------
+#
+#	Subs
+#
+	isGPT() { # PARTOOL DISKABR
+	# Expects fdisk or gdisk as partitioning tool
+	# And a disk-abrevihation like: sda
+		tmp=/tmp/gpt
+		sudo  $1 /dev/$2 -l | grep GPT > $tmp
+		if [ "" = "$(cat $tmp)" ]
+		then	return 1
+		else	return 0
+		fi
+	}
+	isMBR() { # PARTOOL DISKABR
+	# Expects fdisk or gdisk as partitioning tool
+	# And a disk-abrevihation like: sda
+		tmp=/tmp/mbr
+		sudo  $1 /dev/$2 -l | grep MBR > $tmp
+		if [ "" = "$(cat $tmp)" ]
+		then	return 1
+		else	return 0
+		fi
+	}
+	CreatePartitionTempfile() { # PARTOOL DISKABR
+	#
+	#
+		tmpoutput=/tmp/partitions.info
+		sudo $1 /dev/$2 -l > $tmpoutput
+		cat $tmpoutput | grep "Start (sector)" -A ${#tmpoutput} > $tmpoutput.stats
+		cat $tmpoutput.stats | grep "iB" > $tmpoutput.stats.part
+	}
+	GetPartitionNames() { # PARTOOL DISKABR
+	# Parses the partition tempfile and reads its output
+	# Should return their names
+		CreatePartitionTempfile $1 $2
+		tmpoutput=/tmp/partitions.info.stats.part
+		C=1					 # Counter
+		while read line ; do
+			partnum=${line:0:1}
+			printf "$2$partnum "
+			((C++))
+		done < $tmpoutput
+		
+	}
+	SelectDevice() { # id|uuid|label
+	# Select a device by its id, uuid or label.
+	#
+		[ -z $1 ] && ReportStatus 1 "Usage: $0 id|uuid|label" && return 1
+		DisksAvailable=""
+		DevicesAvailable=""
+		menuoption=""
+		ids=$(ls /dev/disk/by-id/)
+		for i in $ids;do test "" = "$(echo $i|grep part)" && DisksAvailable="$DisksAvailable $i";done
+		for disk in $DisksAvailable;do menuoption="$menuoption $(basename $(readlink /dev/disk/by-id/$disk))-$disk";done
+		select out in $menuoption;do output=${out:0:3};echo $output;break;done
+	}
+	SelectPartition() { # PARTOOL DISKABR
+	# Select a partition
+	# g|fdisk [hs]d[a-z][0-9]
+		[ -z $1 ] && ReportStatus 1 "Usage: $0 [fg]disk [hs]d[a-z][0-9]" && return 1
+		select parti in $(basename ${$(GetPartionNames $1 $2)})
+		do		echo $parti
+				return 0
+		done
+	}
+	ShowOverview() { # DISKABR|sd[a-z]
+	# works partly
+	# TODO complete
+		#
+		#	Pre-recognation
+			if [ "" = "$1" ]
+			then	sE "Usage: ShowOverview NAMEOF/dev/XY" && \
+					sE "Example: ShowOverview sda" && \
+					SelectDevice
+					return 1
+			else	# TODO GUID
+					sP "is it letters only (sda)..." "or GUID?"
+			fi
+		#
+		#	Vars
+			tmpoutput=/tmp/partitions.info
+			partitiontools="fdisk gdisk"
+			dev=$1
+			fd="" ; gd=""
+		#	
+		#	 Looking for:	MBR fdisk
+			if ! isInstalled "fdisk"
+			then	sInst fdisk
+			fi
+			fd=$(which fdisk)
+		#	
+		#	 Looking for:	GTP gdisk
+			if isGPT $fd $1  
+			then	if ! isInstalled gdisk
+					then	sInst gdisk
+					fi
+			fi
+			gd=$(which gdisk)
+		#	
+		#	Which tool to use?
+			if [ ! "$gd" = "" ]
+			then	partool="$gd"
+			else	partool="$fd"
+			fi
+		#	
+		#	Create Tempfile
+			CreatePartitionTempfile $partool $dev
+		#	
+		#	GUID
+			GUID=$(cat $tmpoutput|grep GUID|awk '{print $4}') 
+		#	
+		#	Disk info
+			if [ "$partool" = "$gd" ] 
+			then	bk=1024
+					bs=512
+			else	bk=1000
+					bs=500
+			fi
+			space_total=$[ $(cat $tmpoutput | grep $dev|awk '{print $3}') * $bs / $bk / $bk / $bk ]
+			space_avail=$[ $(cat $tmpoutput | grep "free space"|awk '{print $5}') * $bs / $bk / $bk / $bk ]
+			space_used=$[ $space_total - $space_avail ]
+			partitions="$(GetPartitionNames $partool $dev)"
+		#	
+		#	 
+			
+		#	
+		#	Output
+			sE "Using: $partool to display partition info"
+			sE
+			sE "GUID:" 							"$GUID"
+			sE "Total space:" 					"$space_total GB"
+			sE "Used space:"					"$space_used GB"
+			sE "Existing partitions:" 			"$partitions"
+			sE "Available for new partition:" 	"$space_avail GB"
+			sE
+			while read line ; do sE "$line" ; done < $tmpoutput.stats
+			
+	}

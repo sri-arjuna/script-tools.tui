@@ -1,0 +1,20 @@
+Review Rapport:
+-------------------------
+ Naming
+ Specfile
+ Spec is US-English
+ Source0
+ Lisence accepted
+ COPYING shipped
+ Lisence is in %doc
+ Package machtes upstream
+ Build Package
+ Shipped with system libs
+ Package is not relocatable
+ Own its directories		# Was ist es, was braucht es, wo ist es?
+ Proper filesystem ownership
+ No double entries in %files
+ No executable files to set permission
+ Are there forbidden .la libtool archives
+ If its a GUI, does .desktop file exist, or comment why not? CLI/nonGUI +
+ Contained files are valid UTF-8.

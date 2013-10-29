@@ -1,0 +1,7 @@
+# Configuration for dl-youtube handler, created by script-tools 0.9.0
+thisFile=$HOME/youtube-dl
+targetDir=$XDG_DOWNLOAD_DIR/youtube
+video=webm
+videoq=best
+sound=vorbis
+soundq=5

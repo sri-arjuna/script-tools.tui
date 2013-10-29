@@ -1,0 +1,51 @@
+#!/bin/bash
+#
+#	Desription:	Edits custom user scripts from $SEA_SCRIPT_DIR (~/.config/script-tools/scripts)
+#	Lisence:        GPL v3
+#	Author:         sea ; < erat DOT simon æ gmail D0T com >
+#	Created:	2013.07.21
+#	Changed:	2013.07.21
+	script_version=0.1
+#
+#	Title
+#
+	title="sea's Configuration for scripts"
+	sT "$title (0.1)"
+#
+#	Variables
+#
+	basePath="$SEA_SCRIPT_DIR"
+	thisFile=""
+	[ -f "$thisPath/$4" ] && thisFile="$4"
+	[ "-h" = "$4" ] && \
+		echo -e "edit ($script_version)
+		\rUsage: st conf scripts edit [ FILENAME ]
+		" && \
+		return 99
+#
+#	Subs
+#
+	ParseDirEdit(){ # ABSOLUTEPATH
+	#
+	#
+		thisPath="$@"
+		cd "$thisPath"
+		cur="$(pwd)"
+		sE "You are in:" "$cur"
+		rmtf > /dev/zero
+		select thisFile in Back *
+		do	[ Back = "$thisFile" ] && \
+				ReportStatus 6 && \
+				return 6
+			[ -d "$thisFile" ] && ParseDirEdit "$thisPath/$thisFile"
+			[ -f "$thisFile" ] && sEdit "$thisPath/$thisFile"
+		done
+	}
+#
+#	Display
+#
+	if [ "" = "$(echo $thisFile)" ]
+	then	sT "Select a script to edit:"
+		ParseDirEdit "$basePath"
+	else	sEdit "$thisPath/$thisFile"
+	fi

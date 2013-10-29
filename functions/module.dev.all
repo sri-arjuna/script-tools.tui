@@ -1,0 +1,138 @@
+
+# ------------------------------------------------------------------------------
+#	sea's Script Tools: The 3rd Generation
+#	File Description:	Handles some common developing tasks
+#	File Version:		0.6
+#	Author:			Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created (y.m.d):	2012.05.16
+#	Changed:		2013.08.28
+#	License:		GPL v3
+#	Modified By:        
+#	Resource:           
+#	Special Thanks:     
+# ------------------------------------------------------------------------------
+#	Title
+    
+#
+#	Variables
+    
+#
+#	One Liners
+	curDateTime=$(date +'%y.%m.%d-%H.%M.%S')
+#
+#	Subs
+	AddChangelog() { # /PATH/TO/CHANGELOG ["your name or email adress"]
+	# Creates a template for a new changelog entry
+	# Puts it on top of the list, using cat
+		test "" = "$1" && \
+			ReportStatus 1 "Missing changelog argument, or file is missing..." && \
+			sE "Usage: AddChangelog LABEL|/path/to/changelog [\"Your name or email adress\"]" && \
+			return 1 || fn="$1"
+		if [[ -d "$ST_USER_PRJ/$fn" ]] 
+		then	source $ST_USER_PRJ/$1/conf
+			source $ST_USER_PRJ/$1/rpm
+			fn=$rpm_changelog
+			chver=" - $version"
+		elif [[ ! -f "$fn" ]] 
+		then	ReportStatus 1 "Could not add to nonexistent..."
+			if ask "Create file and continue?"
+			then	touch "$fn"
+			else	ReportStatus 1 "Changelog remains nonexistent."
+				return 1
+			fi
+		fi
+		[ ! -z $2 ]]  && usr="- $USER @ $(hostname)$chver" || usr="- $2"
+		echo -e "* $(date +'%a %b %d %Y') $usr - $version\n" > $fn.new
+		echo -e "- YOUR TEXT" >> $fn.new
+		cat $fn > $fn.tmp
+		cat $fn.new > $fn
+		cat $fn.tmp >> $fn
+		rm -f $fn.*
+		ask "Edit $fn now?" && \
+			sEdit $fn.new
+	}
+	CleanUp() { # DIRECTORY
+	# Removes the DIRECTORY and all its sub folders and files quietly.
+	#
+		test "" = "$1" && sE "Usage: CleanUp $(pwd)" && return 1
+		if test -d "$1"
+		then	list=$(sudo find "$1/" -name *)
+				for l in ${list};do rm -f $l;done
+		fi
+	}
+	PackageFolder() { # LABEL|DIRECTORY [VERSION-NR]
+	# Changes to supplied DIRECTORY and saves all non-hidden files
+	# Uses basename to determine filename
+		test "" = "$1" && sE "Usage eg: PackageFolder FOLDER [OPTIONAL-NAME|VERSON]" && return 1
+		if [[ -d $ST_USER_PRJ/$1 ]] 
+		then	source $ST_USER_PRJ/$1/conf
+		tarball=$outputdir/$(date +'%Y%m%d')/$prj_file.tar.gz
+		folder=$prj_path
+		else	folder="$1" ; ver="$2" 
+		name=$(basename "$folder")
+		test ! "" = "$ver" && ver="-$ver"
+		tarball="$HOME/$name$ver.tar.gz"
+
+		fi
+
+		CheckPath $(dirname $tarball)
+
+
+		test ! -d "$folder" && \
+		sE "Could not identify $folder directory." "$FAILURE" && \
+		return 1 || \
+		cd "$folder"
+
+		tar -acf $tarball * && \
+		return 0 || return 1
+	}
+	Prj_Tarball_Clear() { # USERNAME
+	#
+	#
+		test "" = "$1" && sE "Usage eg: Prj_Tarball_Clear $USER" && return 1
+		destB=/tmp/tar.tmp
+			test -d $destB && rm -fR $destB 
+			test ! -d $destB && mkdir -p $destB
+			sudo chown $1 $destB -R
+	}
+	Prj_Tarball() { #  
+	# Creates tarbal in default output path
+	# Which is: $outputdir
+	#
+	#	Test if its a
+	#	LABEL or PATH
+	#
+		test "" = "$1" && sE "Usage eg: Prj_Tarball LABEL|PATH" && return 1
+		tmp="$ST_USER_PRJ/$1"
+		if [[ -d "$1" ]]  ; then # its a directory
+			prj_path="$1"
+			prj_name="$(basename $1)"
+			[ "" = "$2" ]]  && comment="$(date +'%Y%m%d')" || comment="$2"
+			prj_file="$prj_name-$comment"		# For compatibbility with project files
+			outputdir="$HOME"
+		elif [[ -d "$ST_USER_PRJ/$1" ]]  ; then # it is a LABEL
+		    	lbl="$1"
+		    	tmp=/tmp/tar.tmp/$lbl
+			source "$ST_USER_PRJ/$lbl/conf"
+		else 	sE "Sorry the argument \"$1\" is not valid." "$FAILURE"
+			return 1
+		fi
+	#
+	#	Retrieve project data
+	#
+		tmp="/tmp/$prj_name"
+		ext=tar.gz
+		test "" = "$outputdir" && outputdir="$HOME" 
+		[ ! -d "$outputdir" ]]  && mkdir -p "$outputdir"
+	#
+	#	Compress Data
+	#	
+		cd "$prj_path" || return 1 
+		sP "Compressing: $(pwd) to $outputdir/$prj_file.$ext" "$PROGRESS"
+		tar -acf "$outputdir/$prj_file.$ext" * && retval=0 || retval=1
+	#
+	#	Report & exit
+	#
+		ReportStatus $retval "Compressed $prj_path to $outputdir/$prj_file.$ext"
+		return $retval
+	}

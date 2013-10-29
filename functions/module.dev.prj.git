@@ -1,0 +1,407 @@
+
+#
+#	sea's Script Tools: The 3rd Generation
+#	Description:	Handles GIT commands
+#	Author:		Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created:	2012.05.29
+#	Changed:	2013.08.28
+#	License:	GPL v3		
+#	Resource:	man git
+#			https://makandracards.com/makandra/621-git-delete-a-branch-local-or-remote
+#			http://gitref.org/branching/
+#
+#	Subs
+#
+	GIT_New() { # LABEL
+	# Addes a new GIT Module to your project
+	#
+		[ -z $1 ] && \
+			lbl=$(PRJ_Select) || \
+			lbl="$1"
+		
+		source "$ST_USER_PRJ/$lbl/conf"
+		
+		sT "Lets configure GIT"
+		usr=$(input "What is your GIT loginname? ($default_user)" )
+		#loc=$(input "What is the local adress? ($prj_path")
+		
+		ask "Is the GIT projectname (eg: unixname) any diffrent name than $prj_name?" && \
+			prj=$(input "What is it?") || prj=""
+		[ -z $usr ] && usr="\$default_user"
+		
+		sE "Please select a submodule as GIT handler:"
+		select sub in sf gh other;do
+			case $sub in
+			sf)	cmd=SF_New
+				rem="ssh://\$git_user@git.code.sf.net/p/\$git_project/code" ;;
+			gh)	cmd=GH_New
+				rem="https://github.com/\$git_user/\$git_project.git" ;;
+			other)	cmd=""
+				rem=$(input "What is the host's adress?")
+				;;
+			esac
+			break
+		done
+		
+		GIT_Add $lbl "$usr" "$rem" #"$prj_name"
+		ReportStatus $? "Saved GIT configuration for $prj_name"
+		source "$ST_USER_PRJ/$lbl/git"
+		
+		cd "$prj_path"
+		sP "Personaliinge local git repositry" "$WORK"
+		git config --global user.name "$default_user"
+		git config --global user.email "$default_email"
+		ReportStatus $? "Personalized localgit repositry."
+		
+		sP "Looking for data..." "$WORK"
+		if [ "" = "$(echo $(ls))" ]
+		then	sP "$prj_path is empty" "$WORK"
+			GIT_Get "$lbl"
+			ReportStatus $? "Cloned from upstream"
+		else	sP "Init local ($prj_path) repo" "$WORK"
+			cd "$prj_path"
+			git init
+			git add .
+			GIT_Commit $lbl "Init $prj_name"
+		fi
+		
+		sT "Completing missing tasks"
+		if [ ! -z $cmd ] 
+		then 	$cmd "$lbl"
+			ReportStatus $? "Added $sub"
+		fi
+				
+		if SSH_Require $lbl
+		then	sE "Its highly recomended to use ssh for git authentication."
+			ask "Add now?" && \
+				SSH_New $lbl && \
+				source "$ST_USER_PRJ/$lbl/ssh"
+			case $sub in
+			sf)	url="https://sourceforge.net/account/ssh" ;;
+			gh)	url="https://github.com/settings/ssh" ;;
+			esac
+			[ -f "$ST_USER_PRJ/$lbl/ssh" ] && \
+				cat "$ssh_path/$ssh_file.pub"
+			sE "Be sure to add the publickey to $url"
+		else	[ -f "~/.ssh/id_rsa" ] && \
+				cat "~/.ssh/id_rsa.pub" && \
+				sE "Be sure to add the publickey to $url"
+		fi
+	}
+	GIT_Add() { # LABEL USER REMOTE [ PROJECT ]
+	# Writes projects GIT Config
+	#
+		[ -z $3 ] && \
+			ReportStatus 1 "Usage: GIT_Add LABEL USER REMOTE [ PROJECT ]" && \
+			return 1
+		
+		lbl="$1" ; usr="$2"
+		rem="$3"
+		if [ -z $4 ]
+		then	optional="git_project=\"\$prj_name\""
+		else	optional="git_project=\"$4\""
+		fi
+		
+		thisfile="$ST_USER_PRJ/$lbl/git"
+		source "$ST_USER_PRJ/$lbl/conf"
+		
+		if isEmpty -ce "$thisfile"
+		then	cat > "$thisfile" << EOF
+# GIT configuration for project "$prj_name", created with Script-Tools ($stVer)
+	git_user="$usr"
+	$optional
+	git_url_rem="$rem"
+EOF
+		else	ReportStatus 111 "nothing to do?"
+			ask "Edit $(basename $thisfile) $prj_name configuration?" && \
+				sEdit "$thisfile"
+		fi
+		
+	}
+	GIT_Edit_Config() { # LABEL
+	# Edit the GIT-config file:
+	# $sf_url_loc/.git/config
+		test "" = "$1" && sE "Usage: GIT_Edit_Config LABEL" "$FAILURE" && return 1
+		source "$ST_USER_PRJ/$1/conf"
+		
+		file="$prj_path/.git/config"
+		
+		sEdit "$file" 
+		return $?
+	}
+	GIT_Branch_List() { # [ LABEL ]
+	# Changes to \$sf_url_loc, and returns the available entries.
+	# The first result beeing the current branch.
+		#
+		#	Check for arguments
+		#
+		[ -z $1 ] && \
+			sE "Select project file to edit:" && \
+			lbl=$(PRJ_Select) || \
+			lbl="$1"
+		#
+		#	Retrieve project path
+		#
+		prj_path=""
+		source "$ST_USER_PRJ/$lbl/conf" #|| return 1
+		#
+		#	Verify the project location is not empty
+		#	If it is, return 1
+		#
+		[  "" = "$prj_path" ] && \
+			sE "Could not load $prj_name..." "$FAIL" && \
+			return 1 
+		#
+		#	Change Directory to project location
+		#	Ask git for current and other branches
+		#
+		cd "$prj_path"
+		current=$(git branch|grep "*"|awk '{print $2}')
+		branches=$(echo $(git branch|grep -v "\*"))
+		#
+		#	Return values
+		#
+		echo "$current $branches"
+		return 0
+	}
+	GIT_Branch_Select() { # LABEL
+	# Returns selected branch of provided project LABEL
+	# 
+		select out in $(GIT_Branch_List $1);do break;done
+		echo "$out"
+	}
+	GIT_Upload() { # LABEL [BRANCH]
+	# Uplpoads code to git repositry of LABEL
+	#
+		[ -z $1 ] && \
+			ReportStatus 1 "Usage: $0 LABEL [BRANCH]" && \
+			return 1 || \
+			lbl="$1"
+		current="$(GIT_Branch_List $lbl|awk '{print $1}')"
+		[ -z $2 ] && \
+			newBranch="$current" || \
+			newBranch="$2"
+		source "$ST_USER_PRJ/$lbl/conf"
+		source "$ST_USER_PRJ/$lbl/git"
+		cd "$prj_path"
+		
+		[ -f "$ST_USER_PRJ/$lbl/ssh" ] && \
+			source "$ST_USER_PRJ/$lbl/ssh"	#|| return 1
+		if [ ! -z "$ssh_path" ] && [ -f "$ssh_path/$ssh_file" ]
+		then	if [ -L "$ssh_path/$ssh_file" ]
+			then	for link in "$ssh_path/id_rsa" "$ssh_path/identity"
+				do	ln -sf "$ssh_path/$ssh_file" "$link"
+				done
+			else	ReportStatus 1 "Your file $ssh_path/id_rsa is not a symbolic link"
+			fi
+		fi
+	#
+	# 	Add files, get changes and log it
+	#
+		
+		sE "Current branch:" "$current"
+		sP "Generating data..." "$WORK"			
+		rmtf > /dev/zero			# Removes temp files
+		[ ! "$current" = "$newBranch" ] && GIT_Change "$lbl" "$newBranch"
+		
+		git status ask "Write a commit for $(echo $newBranch|sed s,' changing to $newBranch','',g)?" && \
+			git commit || \
+			git commit --amend -am "$msg_commit"
+	
+		sP "Uploading $prj_name" "$WORK"
+		git push -u -q "$git_url_rem" $newBranch #$git_url_loc
+		ReportStatus $? "Uploaded $prj_name"
+		
+		#if [ master = $newBranch ]
+		#then	git remote add origin $git_url_rem 
+		#	git config branch.master.remote origin
+		#	git config branch.master.merge refs/heads/master
+		#else	git remote add $newBranch $git_url_rem 
+		#	git config branch.$newBranch.remote $newBranch
+		#	git config branch.$newBranch.merge refs/heads/$newBranch
+		#fi
+	}
+	GIT_Get() { # LABEL
+	# Downloads GIT Code to project LABEL's $prj_path
+	#
+		[ -z $1 ] && ReportStatus 1 "Usage: $0 LABEL" && return 1
+		source "$ST_USER_PRJ/$1/conf"
+		source "$ST_USER_PRJ/$1/git" || exit 1
+		
+		cd "$prj_path"
+		sP "Cloning into $git_url_rem..." "$WORK"
+		git clone "$git_url_rem" "$prj_path"  > /dev/zero
+		ReportStatus $? "Cloned from $git_url_rem"
+	}
+	GIT_Change() { # LABEL [BRANCH]
+	# Changes to BRANCH if provided of project LABEL
+	# Select a branch to change to by default
+		[ -z $1 ] && \
+			ReportStatus 1 "Usage: $0 LABEL [BRANCH]" && \
+			return 1 || \
+			lbl="$1"
+		current="$(GIT_Branch_List $lbl|awk '{print $1}')"
+		[ -z $2 ] && \
+			newBranch="$current" || \
+			newBranch="$2"
+		source "$ST_USER_PRJ/$lbl/conf"
+		#source "$ST_USER_PRJ/$lbl/git"
+		
+		cd "$prj_path"
+		git status || GIT_Commit $lbl -c $newBranch #&& \
+		git checkout $newBranch > /dev/zero
+		ReportStatus $? "Changed $prj_name branch $current to $newBranch"
+	}
+	GIT_Commit() { # LABEL [-b[ranch]|-c[hange]|-m[erge]|-u[pdate]] [BRANCH]
+	# Ask to add all files or individualy and if you want to write a commit to project LABEL, 
+	# if you pass any -X argument it automaticly adds all files and writes a default message
+		[ -z $1 ] && \
+			ReportStatus 1 "Usage: $0 LABEL [-b[ranch]|-c[hange]|-m[erge]|-u[pdate]] [BRANCH]" && \
+			return 1 || \
+			lbl="$1"
+		source "$ST_USER_PRJ/$lbl/conf"
+		current="$(GIT_Branch_List $lbl|awk '{print $1}')"
+		newBranch=""
+		msg_commit=""
+		
+		for arg in $@
+		do	[ ! "" = "$(echo $(GIT_Branch_List $lbl|grep $arg))" ] && \
+				newBranch="$arg"
+		done
+		[ -z $newBranch ] && \
+			newBranch="$current" 
+		
+		for arg in $(echo $@)
+		do	case "$arg" in
+			"-b"|"-branch")
+				msg_commit="on $prj_name($version):$current create new branch: $newBranch, Script-Tools($stVer)"
+				;;
+			"-m"|"-merge")
+				msg_commit="on $prj_name($version):$current merge from $newBranch, Script-Tools($stVer)"
+				;;
+			"-c"|"-change")
+				msg_commit="on $prj_name($version):$current changing to $newBranch, Script-Tools($stVer)"
+				;;
+			"-u"|"-update")
+				msg_commit="on $prj_name($version):$current code update, Script-Tools($stVer)"
+				;;
+			"-d"|"-delete")
+				msg_commit="on $prj_name($version):$current deleted $newBranch, Script-Tools($stVer)"
+				;;
+			esac
+		done
+		
+		cd 	"$prj_path"
+		rmtf	"$prj_path"	 > /dev/zero		# Removes temp files
+		
+		if [ ! "" = "$(echo $msg_commit)" ]
+		then	git add --all .  > /dev/zero		#
+			git commit --amend -m "$msg_commit"
+		else	if ask "Add all changed files automaticly? ('no' not handled yet!)" 
+			then	git add --all .  > /dev/zero 
+			else	sE "Using: git add -i"
+				git add -i
+			fi
+			git commit
+		fi
+	}
+	GIT_Merge() { # LABEL BRANCH [ -c|-checkout BRANCH ] [-auto]
+	# Merges provided BRANCH with current. -auto changes to branch master first.
+	# If "-c BRANCH" is provided, it changes to BRANCH first. 
+		[ -z $1 ] && \
+			ReportStatus 1 "Usage: $0 LABEL BRANCH [-auto|-q] [-c|-checkout BRANCH] " && \
+			return 1 
+		D=1
+		mode=ask
+		mergeBranch=""
+		changeBranch=""
+		args=( $(echo $@) )
+		for arg in "${args[@]}"
+		do	[ -f "$ST_USER_PRJ/$arg/conf" ] && lbl="$1"
+			case "$arg" in
+			"-auto"|"-q")
+					mode=auto
+				;;
+			"-c"|"-checkout")
+					mode=change
+					changeBranch="${args[$D]}"
+				;;
+			esac
+			[ ! "" = "$lbl" ] && \
+				[ "" = "$(echo $mergeBranch)" ] && \
+				[ ! "" = "$(GIT_Branch_List $lbl|grep $arg)" ] && \
+				mergeBranch="$arg"
+			let D++
+		done
+		source "$ST_USER_PRJ/$lbl/conf"
+		current="$(GIT_Branch_List $lbl|awk '{print $1}')"
+	#
+	#	Action
+	#
+		case $mode in
+		ask)	[ ! "$current" = "master" ] && \
+				sE "Current branch is not master." "$INFO" && \
+				ask "Change to branch master first?" && \
+				GIT_Change "$lbl" "master" && \
+				current=$(GIT_Branch_List "$lbl"|awk '{print $1}')
+			if [ "" = "$(echo $mergeBranch)" ] || [ "$lbl" = "$mergeBranch" ]
+			then	sE "Select a branch to merge with $current:"
+				select mergeBranch in $(GIT_Branch_List "$lbl");do break;done
+			fi
+			GIT_Req_Commit "$lbl" && GIT_Commit "$lbl"
+			git merge "$mergeBranch"
+			ReportStatus $? "Merged $prj_name:$current with $mergeBranch branch."
+			[ $? -eq 0 ] && \
+				GIT_Remove "$lbl" "$mergeBranch"
+			;;
+		auto)	[ ! "$current" = "master" ]  && \
+				[ "" = "$mergeBranch" ] && \
+				mergeBranch="$current"
+		
+			if [ "$mergeBranch" = "" ]
+			then	st dev prj git merge -h
+				exit 99
+			fi
+		
+			GIT_Req_Commit "$lbl" && GIT_Commit "$lbl" -m
+			[ ! "$current" = "master" ]  && \
+				GIT_Change "$lbl" "master"
+			git merge "$mergeBranch"
+			ReportStatus $? "Merged $prj_name:master with $mergeBranch"
+			[ $? -eq 0 ] && \
+				GIT_Remove "$lbl" "$mergeBranch"
+			;;
+		change)	GIT_Req_Commit "$lbl" && GIT_Commit "$lbl" -c
+			GIT_Change "$lbl" "$changeBranch" && \
+				current=$(GIT_Branch_List "$lbl"|awk '{print $1}')
+			git merge "$mergeBranch"
+			ReportStatus $? "Merged $prj_name:$current with $mergeBranch"
+			[ $? -eq 0 ] && \
+				GIT_Remove "$lbl" "$mergeBranch"
+			;;
+		esac
+	}
+	GIT_Remove() { # LABEL BRANCH
+	# Removes git BRANCH from project LABEL
+	#
+		[ -z $2 ] && ReportStatus 1 "Usage: $0 LABEL REMOVEBRANCH" && return 1
+		source "$ST_USER_PRJ/$1/conf"
+		cd "$prj_path"
+		if [ master = $2 ]
+		then	sE "You are about to delete branch: master"
+			ask "Are you really sure?" || return 1
+		fi
+		git branch -d "$2" > /dev/zero
+		ReportStatus $? "Removed branch $2 from $prj_name"
+	}
+	GIT_Req_Commit() { # LABEL
+	# Checks if there is a GIT-Commit required for project LABEL
+	#
+		[ -z $1 ] && ReportStatus 1 "Usage: $0 LABEL" && return 1
+		source "$ST_USER_PRJ/$1/conf"
+		cd "$prj_path"
+		if [ "$(git status|grep 'not staged')" = "" ]
+		then	return 1
+		else	return 0
+		fi
+	}

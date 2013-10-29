@@ -1,0 +1,118 @@
+#!/bin/bash
+#
+#	Desription:	Add a FAS user to script-tools
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea) ; < < erat . simon @ gmail . com >
+#	Created:	2013.09.04
+#	Changed:	2013.09.04
+	script_version=0.1
+#
+#	Title
+#
+	title="sea's FAS Handler - new User"
+	sT "$title ($script_version)"
+#
+#	Variables
+#
+	## PUT in $stDir/Configuration_Variables/modules.fas -- when merge
+	#FAS_SSH="$FAS_ACCOUNTS/"
+#
+#	default settings
+#
+	doIndex=false
+	doRepo=false
+	showFAS=false
+	showRepo=false
+	FAS_USER="$USER"
+	PEOPLE_HOME=""
+	PEOPLE_ROOT=""
+	PEOPLE_FOLDERS=""
+	askReview=""
+#
+#	Display
+#
+	CheckPath $FAS_BASE
+	if [ -f $FAS_CONF ]
+	then	sE "A FAS user information has already been created."
+		ask "Do you want to edit it instead?" && sEdit "$FAS_CONF" && return
+	else	ReportStatus 0 "Welcome $USER to the guided FAS user creation."
+	fi
+	
+	if ! ask "Do you have created a FAS account on $FAS_REGISTER already?"
+	then	$browser_web "$FAS_REGISTER"
+		sE "Please complete registration in $browser_web first."
+		press
+	fi
+	
+	sT "Gather info"
+	FAS_USER=$(input "What is your FAS account name: ")
+	FAS_EMAIL="$FAS_USER@fedorapeople.org"
+	if ask "Do you have space on fedorapeople.org? (you are told when you have)" 
+	then	PEOPLE_HOME=$(input "Where are the files for sync: (without: \$FAS_USER/public_html!) ")
+		PEOPLE_ROOT=$PEOPLE_HOME/$FAS_USER/public_html
+		
+		sT "Optional: Index.html"
+		sE "Script-Tools can generate an index.html if you dont want others to see those files directly."
+		sE "At any time, you can simply remove the file ($PEOPLE_HOME/$FAS_USER/public_html/index.html)" 
+		sE "and disable the index creation for further usage in: $FAS_CONF"
+		sE
+		if ask "Do you want script-tools to (try) generate an index page for you?"
+		then	ask "Do you want to show your FAS email ($FAS_EMAIL)?" && showFAS=true
+			for task in pkgr;do
+			if [ "$task" = pkgr ]
+			then	if ask "Are you a packager?"
+				then	ask "As a packager, do you use $PEOPLE_ROOT for automated reviews?" && askReview=true || askReview=false
+					 $askReview  && ask "Do you want Script-Tools to generate a repositry from your packages there?" && \
+						doRepo=true && ask "Do you want to display links to the repos (normal/source)?" && showRepo=true
+				fi
+			fi
+			done
+		fi
+	fi
+	
+	if [ ! "" = "$PEOPLE_HOME" ] && [ ! "" = "$askReview" ]
+	then	sT "Koji for packagers & Developers"
+		sP "Connecting with koji servers..."
+		RPM_Check_Koji
+	fi
+	
+	sP "Adding $USER to mock group" "$WORK"
+	sudo usermod -a -G mock $USER
+	ReportStatus $? "Added $USER to mock group"
+	
+	sP "Save configuration (1/3)" "$WORK";cat > $FAS_CONF << EOF
+# FAS configuration for $FAS_USER, created with Script-Tools ($stVer)
+FAS_USER=$FAS_USER
+FAS_EMAIL="\$FAS_USER@fedoraproject.org"
+EOF
+	sP "Save configuration (2/3)" "$WORK";cat > $FAS_PEOPLE << EOF
+# Fedorapeople configuration for $FAS_USER, created with Script-Tools ($stVer)
+# Change PEOPLE_HOME to change $XDG_FAS_DIR and $XDG_SCM_DIR at once
+PEOPLE_HOME=$PEOPLE_HOME
+PEOPLE_ROOT=\$PEOPLE_HOME/\$FAS_USER/public_html
+doIndex=$doIndex
+EOF
+	sP "Save configuration (3/3)" "$WORK";cat > $FAS_INDEX << EOF
+# Fedorapeople - index.html configuration for $FAS_USER, created with Script-Tools ($stVer)
+#
+#	Style : Select amog diffrent templates, TODO
+#
+	INDEX_BG=""
+	MODE=custom
+#
+#	Custom : Display
+#
+	showFAS=$showFAS
+	showTitleLink=true
+	showTitleSub=true
+	showRepo=$showRepo
+	showFolders="Approved MyCustom Review Screenshots"
+#
+#	Custom : Actions
+#
+	doRepo=$doRepo
+EOF
+	ReportStatus $? "Saved FAS configuration in: $FAS_BASE"
+	$doIndex && \
+		cd $ROOT && \
+		for fold in $showFolders;do mkdir $fold;done

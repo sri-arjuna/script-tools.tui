@@ -1,0 +1,58 @@
+#!/bin/bash
+#
+#	Plymouth script, Mai 4th 2012 by sea
+#	Requires: chmod +x sea-tweak-grub2
+#
+#	Lets you easy change the plymouth screen.
+#	Very helpfull if you want to change GRUB2 splash screen.
+#
+#	This script is written with best intention to help, 
+#	but there is NO warranty and I deny ANY responsiblity
+#	that may or may not affect your system.
+#
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea)
+#	Release Date:   2012.05.04
+#	Changed Date:	2013.07.20
+	script_version="0.5"
+#	Resource URL:   
+#	Release URL:    
+#
+#	Title
+	sT " sea's Plymouth changer, rebuild optional ($script_version)"
+#
+#	Variables
+#
+	setTheme=$(which plymouth-set-default-theme)
+	plyDir=$(dirname $setTheme)
+	themes=$(ls /usr/share/plymouth/themes) # #     $setTheme -l
+	curTheme=$($setTheme)
+#
+#	output
+#
+	sE "Current theme is:"			"$curTheme"
+	select action in Back Change Reset moreThemes
+	do	case $action in
+		Change)		sE "Please select a new theme..."
+				select theme in Back $themes 
+				do	test "Back" = "$theme" && break
+					if ask "Do you want to rebuild initrd, eventhough this may take a while?"
+					then	opt="-R"
+					else	opt=""
+					fi
+					sP "Applying theme: $theme" "$PROGRESS"
+					sudo $setTheme $theme $opt
+					sE "Applyed theme: $theme" "$SUCCESS"
+					return
+				done
+				;;
+		Reset)		sP "Reseting plymouth" "$WORK"
+				sudo $setTheme -r
+				ReportStatus $? "Reseted plymouth theme" ;;
+		moreThemes)	sP "Instaling plymouth themes" "$WORK"
+				sInst plymouth-them* --exclude=plymouth-theme-hotdog
+				ReportStatus $? "Installed plymouth themes"
+				 ;;
+		Back)		break	;;
+		esac
+	done

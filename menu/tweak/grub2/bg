@@ -1,0 +1,66 @@
+#!/bin/bash
+#
+#	Changes GRUB2 recovery toggle
+#
+#
+#	License:        GPL v3
+#	Author:         Simon A. Erat (sea)
+#	Release Date:   2012.06.04
+#	Changed Date:	2013.06.16
+	script_version=0.6
+#
+#	Title
+#
+	sT "sea's GRUB2 Background Image changer ($script_version)"
+	[ ! isRoot ] && sE "Requires root access!" "$WARN" && return 1
+#
+#	Font settings / Variables
+#
+	
+	grubdir=/boot/grub2
+	grubfile=/etc/default/grub
+#
+#	Looking for existing entry
+#	
+	line="$(grep GRUB_BACKGROUND $grubfile)"
+	current=$(echo "$line"|sed s/"="/" "/g|sed s/\"/' '/g|awk '{print $2}')
+	case "${line:0:1}" in
+	"#")	current=disabled	;;
+	"G")	current="$(basename $current)"	;;
+	"")	current=none	;;
+	esac
+#
+#	Display
+#
+	sE "The current GRUB2 background is:" "$(Capitalize $current)"
+	if ask "Do you want to change it?"
+	then	sE "Please select your new Background image:"
+		fl=""
+		filelist="$(find $XDG_PICTURES_DIR/ -name *jpg) $(find $XDG_PICTURES_DIR/ -name *png)"
+		filelist="$filelist $(find $XDG_HOME_DIR/.backgrounds -name *jpg)"
+		for f in ${filelist} ; do [ -f "$f" ] && fl="$fl $f" ; done
+		filelist=( ${fl})
+		select entry in Back Toggle "${filelist[@]}"
+		do 	[ "$entry" = "Back" ] && return 0
+			break
+		done
+		
+		case $entry in
+		Toggle)	[ disabled = "$current" ] && REPL="${line:1}" || REPL="#$line"  	;;
+		*)	fd="$(dirname $entry)"
+			fn="$(basename $entry)"
+			sE "The background image will be changed to:"  "$fn"	;;
+		esac
+		
+		if [ "" = "$(echo $line)" ]
+		then	echo "GRUB_BACKGROUND=\"$fd/$fn\"" >> $grubfile
+		else	sed s\\"$line"\\"GRUB_BACKGROUND=\"$fd/$fn\""\\g -i $grubfile
+		fi
+		
+		sE
+		ask "Rebuild GRUB2?" && \
+			grub2-mkconfig -o /boot/grub2/grub.cfg > /dev/zero && \
+			return 0 || return 1
+	else	sE "" "$BACK"
+		return 0
+	fi

@@ -1,0 +1,135 @@
+
+# 
+#	sea's Script Tools: The 3rd Generation
+#	Description:	Handles code synchronisation with sourceforge.net
+#	Author:		Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created:	2012.06.22
+#	Changed:	2013.08.28
+#	License:	GPL v3
+#	Resource:	http://cworth.org/hgbook-git/tour
+#			http://pkqs.net/~sbeyer/tmp/pre-git-clt09.pdf
+#			https://sourceforge.net/p/forge/documentation/Release Files for Download
+#
+#	Title
+	
+#
+#	Variables
+#
+	SF_CODE_TYPES="git svn"	
+#
+#	Subs
+#
+	SF_Edit() { # [ LABEL ]
+	# Lets you select an existing sourceforge project
+	# Opens it with vi to edit
+		test "" = "$1" && \
+			sE "Select project file to edit:" && \
+			prj=$(PRJ_Select) || \
+			prj="$1"
+		thisFile="$ST_USER_PRJ/$prj/sf"
+		sP "Editing: $thisFile" "$PROGRESS"
+		sEdit $thisFile && \
+			sE "Edited: $thisFile" "$SUCCESS" || \
+			sE "Could not access file: $thisFile" "$FAILURE"
+	}
+	SF_New() { # [ LABEL ]
+	# Creates a new sourceforge project
+	# 
+	#
+	#	Arguments
+	#
+		[ "" = "$1" ] && \
+			sE "Please enter a label for your new project: " && \
+			select lbl in $(PRJ_Select);do break;done || \
+			lbl=$1
+	#
+	#	Create the project subtype
+	#
+		dest=$ST_USER_PRJ/$lbl
+		CheckPath $dest
+		dest=$dest/sf
+		source $ST_USER_PRJ/$lbl/conf
+		source $ST_USER_PRJ/$lbl/git || return 1
+	#
+	#	Get the projects values
+	#
+		sE "Asking some basic information to create a complete the project file for $lbl..."
+		sE "Currently, only GIT is supportet.."
+		# Parse 1 : ask the user and provide defaults -- empty strings !!
+		sf_pub_name=$(input "What name shall be displayed on your uploads? ($default_user)")
+		sf_pub_email=$(input "What email shall be displayed on your uploads? ($default_mail)")
+		sf_vcs=$DEFAULT_SF_VCS
+		sf_url_loc="\$prj_path" # $(input "Where is your project located? ($prj_path)")
+		sf_url_rem="ssh://\$sf_username@\$sf_vcs.code.sf.net/p/\$sf_name/code"
+		# Parse 2 : Check if vars are empty, if so, fill with defaults
+		[ "" = "$sf_pub_name" ]		&& sf_pub_name="$default_user"
+		[ "" = "$sf_pub_email" ]	&& sf_pub_email="$default_mail"
+		#[ "" = "$sf_url_loc" ]		&& sf_url_loc="$prj_path"
+		# Parse 3 : Save the file
+		cat > $dest << EOF
+# Sourceforge configuration for project $prj_name, created by sea Script-Tools ($stVer)
+	sf_name="\$git_project"
+	sf_username="$\git_user"
+	sf_vcs="git"
+	sf_pub_name="$sf_pub_name"
+	sf_pub_email="$sf_pub_email"
+EOF
+
+	}
+	SF_Upload() { # [ LABEL ] [ BRANCH ]
+	# Start the proper upload
+	# according to $sf_vcs
+		test "" = "$1" && \
+			sE "Please select the label to upload" && \
+			lbl=$(echo $(PRJ_Select)) || \
+			lbl=$1
+		
+		source $ST_USER_PRJ/$lbl/sf || return 1
+		
+		case $sf_vcs in
+		git)	GIT_Upload $lbl	$2;;
+		svn)	sE "Sorry, first i get GIT working..."	"$FAILURE";;
+		esac
+	}
+	#SF_Upload_Files $lbl $l /home/frs/project/$prj_name
+	SF_Upload_Files() { # LABEL FILE REMOTEPATH
+	# Uploading files to sourceforge using sftp
+	#
+	#
+	#	Verify an existing argument
+	#	beeing a valid LABEL
+	#
+		test "" = "$1" && \
+			sE "Please select the label to upload" && \
+			lbl=$(echo $(PRJ_Select)) || \
+			lbl=$1
+		td=$ST_USER_PRJ/$lbl
+		if [ -d $td  ]
+		then	for each in $(ls $td|grep -v path|grep -v release);do test -f $td/$each && source $td/$each;done 
+		else	sE "The label $(basename $td) was not found." "$FAILURE"
+			return 1
+		fi
+	#
+	#	Variables
+	#
+		source $td/conf
+		source $td/sf
+		[ -f $td/rpm ] && \
+			doSFrepo=true && \
+			source $td/rpm || \
+			doSFrepo=false
+		if [ ! -f "$ST_USER_PRJ/$lbl/ssh" ]
+		then	if [ "" = "$(grep $sf_username $HOME/.netrc)" ] # nope its not. add it to netrc
+			then	echo "machine frs.sourceforge.net login $sf_username password $sf_password" >> $HOME/.netrc
+				chmod 600 $HOME/.netrc
+			fi
+		fi
+		
+		sftp $sf_username@frs.sourceforge.net << EOF
+		cd /home/frs/project/$sf_name
+		lcd $outputdir
+		mput -r * 
+		bye
+EOF
+		ReportStatus $? "Uploaded files"
+	}

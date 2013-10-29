@@ -1,0 +1,54 @@
+#!/bin/bash
+#
+# 	sea's "dev prj ssh" is aimed to assist developers to  
+# 	easy handle their multiple projects.
+#
+# 	This script is written with best intention to help, 
+# 	but there is NO warranty or garanty and I deny ANY responsiblity
+# 	that may or may not affect your system.
+#
+#
+# 	Lisence:        GPL v3
+# 	Author:         Simon A. Erat (sea)
+# 	Release Date:   2012 June 25
+# 	Changed Date:	2013.08.28
+  	script_version=0.3
+#
+#
+#	Title
+#
+	title=" sea's SSH Manager - Make Keyfile"
+	sT "$title ($script_version)"
+#
+#	Vars
+#
+	lbl=""
+	list=""
+#
+#	Figure label 
+#
+	for ar in $@
+	do	[ -f "$SEA_DEV_DIR/$ar/conf" ] && \
+			lbl="$ar" && break
+	done
+	[ "" = "$lbl" ] && lbl=$(PRJ_Select)
+#
+#	Display
+#
+	source "$SEA_DEV_DIR/$lbl/conf"
+	sE "Selected project:"	"$prj_name"
+	#source "$SEA_DEV_DIR/$lbl/ssh"
+	
+	if ask "Create a new keyfile?"
+	then	ReportStatus 2 "Creating a new keyfile for $prj_name"
+		SSH_MakeKey $lbl
+		ReportStatus $? "Created new keyfile for $prj_name"
+	else	if ask "Use an existing keyfile?"
+		then	select key in $(ls /home/$USER/.ssh  --hide=known_hosts | grep ".pub" );do break;done
+			search="$(grep _file $SEA_DEV_DIR/$lbl/ssh|sed s,=,' ',g|awk '{print $2}')"
+			sed s,"$search","${key:0:(-3)}",g -i "$SEA_DEV_DIR/$lbl/ssh"
+			cat "$SEA_DEV_DIR/$lbl/ssh"
+		else	ReportStatus 111 "Come back later"
+			return 111
+		fi
+	fi

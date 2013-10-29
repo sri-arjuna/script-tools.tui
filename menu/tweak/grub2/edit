@@ -1,0 +1,2 @@
+[ ! 0 -eq $UID ] && sE "Requires root access!" "FAIL" && return 1
+sEdit /etc/default/grub

@@ -1,0 +1,3 @@
+#!/bin/bash
+CRON_Tempfile="$ST_CACHE_DIR/cron.tmp"
+CRON_Current="$ST_CACHE_DIR/cron.cur"

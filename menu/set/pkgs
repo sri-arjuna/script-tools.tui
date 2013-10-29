@@ -1,0 +1,80 @@
+#!/bin/bash
+# ------------------------------------------------------------------------------
+# | sea's Script Tools: The 3rd Generation
+# | File Description:	Install diffrent packages
+# | Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+# | Created (y.m.d):    2012.05.30
+# | Changed:            2013.05.04
+# | License:            GPL v3
+# | Modified By:        
+# | Resource:           
+# | Special Thanks:     
+    script_version=0.6
+# ------------------------------------------------------------------------------
+# | Title
+    sT "sea's CL Installation upon minimal install ($script_version)"
+# |
+# | Variables
+    listDir=$stDir/Configuration_Lists/inst
+# |
+# | One Liners
+    apps=$(ls $listDir|grep apps)
+    devs=$(ls $listDir|grep dev)
+    de=
+    des=
+    DEs=$(ls $listDir|grep "de\.")
+    drivers=$(ls $listDir|grep "driv")
+    mm=$(isBased)
+    echo " " > /tmp/install.list
+# |
+# | Subs
+	
+# |
+# | Display
+	if ask "Do you want a Desktop Environment?"
+	then	cat $listDir/gui.* > /tmp/install.list
+	fi
+	sE "Please select which one:"
+	for d in $DEs; do des="$des ${d:3}";done
+	select de in $des; do cat $listDir/de.$de >> /tmp/install.list;break;done
+	
+	test $de = lxde && source $SEA_CLI_DIR//set/breeze
+	
+	if [ ! "" = "$de" ]		# Its a GUI, ask for applications
+	then	for app in $apps
+			do	if ask "Add ${app:5} programs?"
+				then	cat $listDir/$app >> /tmp/install.list
+				fi
+			done	
+	fi
+	
+	if ask "Do you develope?"
+	then	cat $listDir/dev.* >> /tmp/install.list
+	fi
+	
+	if ask "Install support for: scanner"
+	then	cat $listDir/drivers.scanner 	>> /tmp/install.list
+	fi
+	
+	
+	if ask "Install support for: printers"
+	then	cat $listDir/drivers.printer	>> /tmp/install.list
+	fi
+	
+	
+	if ask "Install multimedia for $mm?"
+	then	cat $listDir/multimedia/$mm >> /tmp/install.list
+	fi
+	
+	cat $listDir/sys.* >> /tmp/install.list
+	PKGS_before=$(yum list installed|wc -l)
+	#
+	#	Parse 2 -- Install packages
+	#
+	sInst $(cat /tmp/install.list)
+
+	PKGS_after=$(yum list installed|wc -l)
+	
+	sE "Below a compare of the amount of installed packages"
+	sE "Before:"	"$PKGS_before"
+	sE "After:"	"$PKGS_after"

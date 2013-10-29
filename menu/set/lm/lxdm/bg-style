@@ -1,0 +1,22 @@
+#!/bin/bash
+# ------------------------------------------------------------------------------
+# | sea's Script Tools: The 3rd Generation
+# | File Description:	Handle Login Manager things - LXDM
+	script_version=0.1
+# | Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+# | Created (y.m.d):    2012.05.30
+# | Changed:            2012.05.30
+# | License:            GPL v3
+# | Modified By:        
+# | Resource:           
+# | Special Thanks: 
+# ------------------------------------------------------------------------------
+# | Title
+	sT " ($script_version)"
+# |
+# | Vars
+
+# | One liners
+
+# |
+# | Display

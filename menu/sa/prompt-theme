@@ -1,0 +1,22 @@
+#!/bin/bash
+#
+#	Desription:	Changes diffrent shell prompt themes
+#	Lisence:	GPL v3
+#	Author: 	Simon A. Erat (sea), erat.simon æ gmail.com
+#	Release Date:	2012.11.17
+#	Changed Date:	2012.11.17
+	script_version=0.1
+#
+#	Title
+#
+    sT "sea Shell Prompt Themes ($script_version)"
+#
+#	Variables
+#
+	complex_happy=""
+	coder_much="\033[1;32m# |\n# |    \H with \j shell jobs\n# |    \u in \W @ \A\n# |    Hist: \! ; Cmd: \# ; $(basename $SHELL): \V\n# |\n     \$ \033"
+	coder_basic="\\\\\$ "
+	minimalistix="\033[1;34m\$ \033[36m"
+	grandpa="\n# |    Came from:    $OLD"
+	
+	echo "$coder_basic"

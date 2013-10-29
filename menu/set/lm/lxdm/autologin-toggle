@@ -1,0 +1,41 @@
+#!/bin/bash
+# ------------------------------------------------------------------------------
+# | sea's Script Tools: The 3rd Generation
+# | File Description:	Handle Login Manager things - LXDM
+	script_version=0.1
+# | Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+# | Created (y.m.d):    2012.05.30
+# | Changed:            2012.05.30
+# | License:            GPL v3
+# | Modified By:        
+# | Resource:           
+# | Special Thanks: 
+# ------------------------------------------------------------------------------
+# | Title
+	sT "sea's lxdm tweaks : autologin toggle ($script_version)"
+	test ! isRoot && sE "Requires root rights..." "$FAILURE" && return 1
+# |
+# | Vars
+	lxdm_conf=/etc/lxdm/lxdm.conf
+	search_term="autologin="
+	
+# | One liners
+	test ! 0 = ""$UID && sE "This script requires you to be root..." && return 1
+	status=$(grep "$search_term" $lxdm_conf)
+# |
+# | Display
+	sP "Togge autologin for LXDM..." "$PROGRESS"
+
+	if [ "${status:0:1}" = "#" ]
+	then	SF="# $search_term"
+			RW="$search_term"
+			go="enabled"
+	else	SF="$search_term"
+			RW="# $search_term"
+			go="disabled"
+	fi
+
+	sed -i s/"$SF"/"$RW"/g $lxdm_conf && \
+		sE "Successfully $go autologin" "$SUCCESS" ||\
+		sE "Could not toggle autologin." "$FAILURE"
+		#press

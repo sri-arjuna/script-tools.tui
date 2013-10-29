@@ -1,0 +1,85 @@
+
+#
+#	Desription:	Handles FTP projects
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea), erat.simon æ gmail.com
+#	Release Date:   2012.11.29
+#	Changed Date:	2013.08.28
+#
+#
+	FTP_New() { # [ LABEL ]
+	# Creates a ftp config file in (selected) LABEL
+	#
+	#
+	#	Title
+	#
+		sT "Create FTP configuration $1"
+	#
+	#	Variables
+	#
+		lbl=""
+		ftp_user=""
+		ftp_adress=""
+		ftp_port=""
+		ftp_path_local=""
+		ftp_path_remote=""
+		ftp_password=""
+		test ! "" = "$1" && lbl="$1"
+		test "" = "$lbl" && lbl=$(PRJ_Select)
+		source $ST_USER_PRJ/$lbl/conf
+		
+		
+		def_ftp_user="anonymous"
+		def_ftp_adress="ftp-server.com"
+		def_ftp_port="22"
+		def_ftp_path_local="$outputdir"
+		def_ftp_path_remote="/"
+		def_ftp_password=""
+	#
+	#	Asking values
+	#
+		ftp_user=$(input "What is the username? ($def_ftp_user) ")
+		ftp_adress=$(input "What is the adress? ($def_ftp_adress) ")
+		ftp_port=$(input "What is the port? ($def_ftp_port) ")
+		ftp_path_local=""$(input "What is the local path? ($def_ftp_path_local) ")
+		ftp_path_remote=$(input "What is the remote path? ($def_ftp_path_remote) ")
+		ftp_password=$(input "What is the password?")
+	#
+	#	If empty, set default generated
+	#
+		[ "" = "$ftp_user" ] 	&& ftp_user="$def_ftp_user"
+		[ "" = "$ftp_adress" ] 	&& ftp_adress="$def_tp_adress"
+		[ "" = "$ftp_port" ] 	&& ftp_port="$def_ftp_port"
+		[ "" = "$ftp_path_local" ] && ftp_path_local="$def_path_local"
+		[ "" = "$ftp_path_remote" ] && ftp_path_remote="$def_ftp_path_remote"
+	#
+	#	Saving to file
+	#
+		cat > "$ST_USER_PRJ/$lbl/ftp" << EOF
+# Script-Tools ($stVer) FTP configuration for project $prj_name ($version)
+	ftp_user="$ftp_user"
+	ftp_adress="$ftp_adress"
+	ftp_port="$ftp_port"
+	ftp_path_local="$ftp_path_local"
+	ftp_path_remote="$ftp_path_remote"
+	ftp_password="$ftp_password"
+EOF
+		which lftp | grep which > /dev/zero && sInst lftp
+	}
+	FTP_Upload() { # LABEL
+	# Uploads all files from $ftp_path_local
+	# to $ftp_path_remote
+		#echo TEST
+		[ "" = "$1" ] && \
+			sE "Select project with FTP:" && \
+			lbl=$(PRJ_Select) || \
+			lbl="$1"
+		source "$ST_USER_PRJ/$lbl/ftp"
+		
+		lftp $ftp_adress<<SCRIPT_ON
+		lcd $ftp_path_local
+		cd $ftp_path_remote
+		mput *
+		bye
+SCRIPT_ON
+	}

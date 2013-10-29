@@ -1,0 +1,5 @@
+[script-tools]
+name=Script-Tools
+baseurl=http://script-tools.tipido.net/repo
+enabled=1
+gpgcheck=0

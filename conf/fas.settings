@@ -1,0 +1,7 @@
+	FAS_BASE=$SEA_CFG_DIR/fas
+	FAS_CONF="$FAS_BASE/info"
+	FAS_PEOPLE="$FAS_BASE/fedorapeople"
+	FAS_INDEX="$FAS_BASE/index"
+	FAS_ACCOUNTS="https://admin.fedoraproject.org/accounts"
+	FAS_REGISTER="$FAS_ACCOUNTS/user/new"
+	FAS_SSH="$FAS_ACCOUNTS/user/addkey"

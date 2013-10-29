@@ -1,0 +1,34 @@
+#!/bin/bash
+# ------------------------------------------------------------------------------
+# | sea's Script Tools: The 3rd Generation
+# | File Description:	Partitions
+	script_version=0.1
+# | Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+# | Created (y.m.d):    2012.06.20
+# | Changed:            2012.06.20
+# | License:            GPL v3
+# | Modified By:        
+# | Resource:           
+# | Special Thanks:     
+# ------------------------------------------------------------------------------
+# | Title
+    sT " sea's TODO Easy Partitions ($script_version)"
+# |
+# | Variables
+    DevicesToCheck="fd sd hd us"
+    DevicesFound=""
+    for dev in $DevicesToCheck
+    do	test ! -d /dev/$dev &&  DevicesFound="$DevicesFound $(ls /dev/$dev*)"
+    done
+# |
+# | One Liners
+    
+# |
+# | Subs
+    
+# |
+# | Display
+	sS $DevicesFound
+	read buffer
+    answer=$(sS $DevicesFound)
+    echo $answer

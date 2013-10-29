@@ -1,0 +1,188 @@
+File:		/home/simon/priv/prjs/script-tools/script-tools/Documentation/COMMANDS
+Generated:	2013.0917
+Version:	0.8.7
+
+New scripts in: /usr/bin
+-----------------------------
+bash-colors
+blame
+chx
+isEmpty
+isLVM
+mem
+moalpa
+newScript
+p
+qbkup
+rmtf
+screenshot
+upd
+vimail
+yumreset
+yumresume
+
+
+Commands/Arguments for Script-Tools (st 0.8.7)
+-----------------------------------------------
+Note that you can jump in at any argument level, 
+dig deeper the menu from there and go back to where you jumped in.
+----------------------------------------------
+st
+st sa
+st sa hostname
+st sa bk
+st sa bk conf
+st sa bk sync
+st sa gpg
+st sa gpg import
+st sa gpg import fedora
+st sa gpg import rhel
+st sa sel
+st sa prompt-theme
+st sa cron
+st sa wipe
+st sa virtfs
+st conf
+st conf scripts
+st conf scripts rm
+st conf scripts new
+st conf scripts edit
+st conf incl
+st conf incl edit
+st conf st
+st conf st sys
+st conf st others
+st conf st mods
+st conf ig
+st iso
+st iso spin
+st iso usb
+st set
+st set alias
+st set keyb
+st set pkgs
+st set stage
+st set locks
+st set users
+st set lm
+st set lm lxdm
+st set lm lxdm bg-image
+st set lm lxdm install
+st set lm lxdm autologin-toggle
+st set lm lxdm bg-style
+st set lm lxdm autologin-name
+st set lm slim
+st set lm slim def-usr-toggle
+st set lm slim install
+st set lm slim edit-session
+st set lm slim autologin-toggle
+st set lm slim def-usr-name
+st set lm activ
+st set lm deskfile
+st set lm gdm
+st set lm gdm rndbg
+st set lm gdm install
+st set lm gdm bg
+st set kb
+st set up
+st ts
+st ts net
+st ts net find-hw
+st ts net hddinfo
+st ts login
+st ts login node
+st net
+st net mgr
+st net dl-fed
+st net yt
+st net nas
+st fas
+st fas fr
+st fas fr lics
+st fas fr rev-mbld
+st fas fr rev-gen
+st fas user
+st fas user new
+st fas scm
+st fas scm init
+st fas fp
+st fas fp genindex
+st fas fp sync
+st dev
+st dev build
+st dev ssh
+st dev ssh add
+st dev ssh make
+st dev ssh con
+st dev ssh edit
+st dev genman
+st dev ks
+st dev ks add
+st dev ks make
+st dev ks edit
+st dev sf
+st dev sf add
+st dev sf uplc
+st dev sf uplf
+st dev sf edit
+st dev koji
+st dev koji add
+st dev koji make
+st dev koji edit
+st dev release
+st dev review
+st dev rpm
+st dev rpm spec
+st dev rpm changelog
+st dev rpm add
+st dev rpm make
+st dev rpm edit
+st dev repo
+st dev repo add
+st dev repo edit
+st dev repo upl
+st dev git
+st dev git branch
+st dev git add
+st dev git change
+st dev git del
+st dev git merge
+st dev git commit
+st dev git upl
+st dev prj
+st dev prj remove
+st dev prj add
+st dev prj edit
+st dev ftp
+st dev ftp add
+st dev ftp edit
+st dev ftp upl
+st tweak
+st tweak grub2
+st tweak grub2 term
+st tweak grub2 theme
+st tweak grub2 theme export
+st tweak grub2 theme remove
+st tweak grub2 theme install
+st tweak grub2 theme change
+st tweak grub2 theme copy
+st tweak grub2 theme import
+st tweak grub2 theme edit
+st tweak grub2 font
+st tweak grub2 uuid
+st tweak grub2 screen
+st tweak grub2 update
+st tweak grub2 timeout
+st tweak grub2 bg
+st tweak grub2 recover
+st tweak grub2 edit
+st tweak grub2 submenu
+st tweak grub2 gfx
+st tweak services
+st tweak default-dirs
+st tweak ffua
+st tweak siggen
+st tweak gnome
+st tweak repo
+st tweak repo toggle
+st tweak plymouth

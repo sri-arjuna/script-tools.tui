@@ -1,0 +1,255 @@
+
+# --------------------------------------------------------------------------------------| #
+#	Project sea:	Package of small scripts for an easy set up of linux uses	| #
+#	Description:	Provides standart cron commands					| #
+#	Script by:	Simon A. Erat (sea)						| #
+#	Contact:	http://forums.fedoraforum.org/member.php?u=183882	(sea)	| #
+#	Date (created):	2011.07.24 (Year/Month/Day)					| #
+#	Date (changed):	2013.05.15 							| #
+#	FileVersion:	0.5								| #
+# --------------------------------------------------------------------------------------| #
+#
+#	sea cron routine
+#
+	[ -z $CRON_Tempfile ] && CRON_Tempfile=$ST_CACHE_DIR/cron.tmp
+	[ -z $CRON_Current ] && CRON_Current=$ST_CACHE_DIR/cron.cur
+	
+	CRON_List() { # 
+	# Show job list of cron
+	#
+		isRoot && user="ROOT" || user="$USER"
+		sT " CRON: Current jobs for: $user"
+		printf "${seacolor}"
+		tmp="$(crontab -l)"
+		retval=$?
+				
+		if [ "" = "$(echo '$tmp'|grep -v '#')" ]
+		then	echo "No Cronjobs for $user"
+		else	echo "$tmp"
+		fi
+		
+		printf "${reset}"
+		return $retval
+	}
+	CRON_New() { # 
+	# Creates a new cron job
+	# eventualy from templates
+		cd $ST_TEMPLATE_DIR/cron/ ; templates=($(echo $(ls *)))
+		template=other
+		list_intervall_lazy="hourly daily weekly monthly yearly"
+		timecode="" ; cmd=""
+		this="$CRON_Tempfile"
+		
+	#
+	#	Save current jobs
+	#
+		sE "Before adding a new job, lets save current ones.."
+		CRON_Save
+		
+	#
+	#	Templates or custom?
+	#
+		sE "Available templates:" "$(echo ${templates[@]})"
+		if ask "Create a cronjob from templates?"
+		then 	select template in ${templates[@]}
+			do	case $template in
+				backup)	if [ ! -f "$ST_USER_DIR/backup.conf" ]
+					then	sE "You want to create a cronjob for backup but havent configured backup yet."
+						sE 
+						press 
+						st sa bk conf && retval=$?
+						ReportStatus $retval "Created $ST_USER_DIR/backup.conf"
+						source "$ST_USER_DIR/backup.conf"
+					fi
+					;;
+				esac
+				sE "Selected: $template" "$SUCCESS"
+				break
+			done
+			doTemplate=true
+			cmd="$ST_TEMPLATE_DIR/cron/$template"
+		else	sE "Please provide now the absolute path to what you want to execute"
+			doTemplate=false
+			cmd="$(input 'Path: ')"
+		fi
+		
+		if [ ! $template = backup ] 
+		then	sE "Please select your time mode:"
+			select mode in lazy precice;do break;done
+			case $mode in
+			lazy)
+				select timecode in $list_intervall_lazy;do break;done 
+				echo -e "@$timecode \t $cmd"	> "$CRON_Tempfile"
+				;;
+			precice)
+				cat /etc/crontab
+				sE "Note that you may use custom codings simliar but not limited to:"
+				sE "Writte from memory might be false"
+				sE "Execute every VALUE, eg */2 every 2 mins/days/months:" "*/2, */4, */6"
+				sE "Execute at given time or during range:" "1-3,6-9 / 15,30,45 / 00,03,12,15"
+				select opt in lists custom
+				do	case $opt in
+					lists)	sE "Select minute"
+						select mins in $(seq 01 59) 00 "*";do break;done
+						sE "Select hour"
+						select hrs in $(seq 01 23) 00 "*";do break;done
+						sE "Select day of month"
+						select dom in $(seq 1 31) "*";do break;done
+						sE "Select month"
+						select month in $(seq 1 12) "*";do break;done
+						sE "Select day of week"
+						select dow in sun mon tue wed thu fri sat "*";do break;done
+							;;
+					custom)	mins=(input "Enter your minute code: ")
+						hrs=(input "Enter your hour code: ")
+						dom=(input "Enter your 'day of month' code: ")
+						month=(input "Enter your month code: ")
+						dow=(input "Enter your 'day of week' code: ")
+							;;
+					esac
+					break
+				done
+				
+				# check for empty vars
+				[ -z $mins ] && mins="*"
+				[ -z $hrs ] && hrs="*"
+				[ -z $dom ] && dom="*"
+				[ -z $month ] && month="*"
+				[ -z $dow ] && dow="*"
+				
+				[ "*****" = "$mins$hrs$dom$month$dow" ] && \
+					sE "Please provide any 'non any time' times." && \
+					return 1 || \
+					timecode="$mins $hrs $dom $month $dow"
+				
+				# write file
+				echo -e "$timecode \t $cmd" > "$CRON_Tempfile"
+				;;
+			esac
+		else	# do the backup thing
+			# increment & full
+			source $ST_USER_DIR/backup.conf
+			echo -e "@$full_occ \t $ST_MENU_DIR/sa/bk/up -full
+			\r@$incr_occ \t $ST_MENU_DIR/sa/bk/up -inc" > "$CRON_Tempfile"
+		fi
+		
+		sP "Adding job to crontab" "$PROGRESS"
+		cat "$CRON_Tempfile" >> "$CRON_Current"
+		crontab "$CRON_Current" 
+		retval=$?
+		
+		CRON_List
+		ReportStatus $retval "Added job to crontab"
+		return $retval
+	}
+	CRON_Save() { # 
+	# Save cronjob to $CRON_Current
+	#
+		[ -f $CRON_Current ] && rm -f $CRON_Current
+		isRoot && user="ROOT" || user="$USER"
+		sE "CRON: Save jobs for $user to " "$CRON_Current"
+		crontab -l	> 	"$CRON_Current" && retval=$?
+		return $retval
+	}
+	CRON_FileComment() { # FILE
+	# Prints a comment on top of the cronjob file
+	#
+		printf "# Cron jobs managed by Script-Tools $stVer\n" > "$1"
+	}
+	CRON_Remove() { # 
+	# Remove a cronjob for current user
+	#
+		this="$CRON_Current"  ; [ -f $this ] && rm -f $this
+		unset lines[@] ; C=0
+		retval=1
+		isRoot && user="ROOT" || user="$USER"
+		
+		sT "CRON: Remove jobs of $user"
+	#	
+	# 	Create tempfile & fill array
+	#
+		crontab -l	> 	"$this"
+		while read line
+		do	[ ! "#" = "$(echo ${line:0:1})" ] && \
+				lines[$C]="$line" && ((C++))
+		done < $this
+		C=$[ $C - 1 ]
+	#
+	# 	Select
+	#
+		sE "Which Cron Job do you want to remove?"
+		toRemove=true
+		select remover in "${lines[@]}"
+		do	[ "$remover" = Abort ] && retval=4 && break
+			sP "Removing \"$(echo ${remover:0:20})...\"" "$PROGRESS"
+			for num in $(seq 0 $C)
+			do	if [ "$remover" = "$(echo -e "${lines[$num]}")" ]
+				then	# remove from array
+					if [ true = $toRemove ] 
+					then	toRemove=false 
+						unset lines[$num] 
+						retval=$?
+						break
+					fi
+				fi
+			done
+			break
+		done
+		
+	#
+	#	Write new 'smaller' array to file
+	#
+		if [ $retval -eq 0 ]
+		then	[ -f "$this" ] && rm -f "$this"
+			CRON_FileComment "$this"
+			count=0
+			while [ $count -le $C ]
+			do	[ ! "" = "$(echo ${lines[$count]})" ] && \
+					printf "${lines[$count]}\n" >> "$this" 
+				((count++))				
+			done
+			crontab "$this" && retval=$?
+		fi
+		
+	#
+	# 	Exit
+	#
+		rm -f "$this"
+		ReportStatus $retval "Removed \"$(echo ${remover:0:30})...\""
+		CRON_List
+		return $retval
+	}
+	cronNew() { # BUGGY, do not use yet
+	#
+	#
+		echo "#	${seacolor}If there is no value to check, use * as wildmark!${reset}"
+		#1
+
+		echo -e "#	Enter the minute value: '*/15' for an execution every 15 minutes,\n#	\t15-45/30, 05,09 ')"
+		minutes="$(input)"
+		#2
+
+		echo -e "#	Enter the hour value: '*/2' for an execution every 2 hours,\n#	\t09-18/3 for execution every 3 hours within 9am and 6pm, @hourly')"
+		hours="$(input)"
+		#3
+
+		echo -e "#	Day of Month: 1-31 ; */7 ; @daily"
+		dom="$(input)"
+		#4
+
+		echo -e "#	Month: 1-12 ; */3 ; @yearly ; @monthly"
+		month="$(input)"
+		#5
+
+		echo -e "#	Weekdays: 1-7 ; */2 ; @weekly"
+		weekdays="$(input)"
+		#6
+
+		#echo -e "#	Command with absolute path! "
+		#croncmd="$(input)"
+		#
+
+		croncommandline="$minutes $hours $dom $month $weekdays " #$croncmd				#	Generated with sea scripts"
+		echo $croncommandline
+		# 7 | 8
+	}

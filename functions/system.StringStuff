@@ -1,0 +1,159 @@
+
+# ------------------------------------------------------------------------------
+#	sea's Script Tools: The 3rd Generation
+#	File Description:	
+#	File Version:       0.4
+#	Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created (y.m.d):    2012.04.10
+#	Changed:            2013.05.03
+#	License:            GPL v3
+#	Modified By:        
+#	Resource:           
+#	Special Thanks:     
+# ------------------------------------------------------------------------------
+#	Title
+    
+#
+#	Variables
+    
+#
+#	One Liners
+    
+#
+#	Subs
+	sSplitVariable() { # LINE
+	# Reads the LINE expecting one "=" symbol, and prints 2 lines
+	# Line 1: variable ; Line 2: value
+		echo "TODO"
+	}
+	sEvenCharNumber() { # "ARG"
+	# Checks if provided string is of even length.
+	# Adds an empty space at then end otherwise.
+		tString="$1"
+		lenA=${#tString}
+		lenB=$[ ($lenA / 2) *2 ]
+		if [[ "$lenA" = "$lenB" ]] 
+		then    echo "$tString"
+			return 0 
+		else    echo "$tString "
+			return 1
+		fi
+	}
+	ListArray() { # LIST OF SEVERAL ARGUMENTS OR A LARGE ARRAY
+	# Prints all arguments as a 2 row'd output
+	#
+		ttmmpp=/tmp/tmp.array ; echo "" > $ttmmpp
+		counter=0
+		echo $@ > $ttmmpp
+		while read line; do 
+			case $counter in
+				0)	A="$line"				;;
+				1)	sE "$A" "$line"			;;
+				2)	A="$line" ; counter=0	;;
+			esac
+			((counter++))
+		done
+	}
+	WhichUser() { # [[ /.hidden/home ]]
+	# Parses the dirname of \$HOME
+	# Lets the user select which user shall be returned
+		if [ "" = "$1" ]
+		then	if [ ! 0 = "$UID" ]
+				then	tmphome=$(dirname $HOME)
+				else	tmphome=/home
+				fi
+		else	tmphome="$1"
+		fi
+		
+		users=$(ls --hide=lost+found $tmphome)
+		
+		select usr in $users
+		do	test -d $tmphome/$usr && \
+				echo $usr && return 0
+		done
+	}
+	unalias input
+	input() { # QUESTION
+	# Asks the user a question and returns the answer
+	# Its a simple wrapper for read
+		read -p "$BORDER_LEFT $1 " input
+		echo "$input"
+	}
+	ConfigGet() { # "FILE" CONFIGNAME
+	# beta TODO Returns Configuration Value
+	# 1 or 99 with file missing
+		[ -z $2 ] && echo "Usage: ConfigGet \"FI LE\" CONFIGNAME" && return 1
+		oldpwd="$(pwd)"
+		retval=99
+		for folder in  "$ST_FUNC_DIR" "$ST_CONF_DIR"
+		do	cd "$folder"	
+			str="$(echo $(cat "$1"|grep $2))"
+			var="$2"
+			if [ -f "$1" ]
+			then	if [ ! "" = "$str" ]
+				then	echo "${str:${#var}+1}"
+					retval=0
+				else	echo ""
+					retval=1
+				fi
+			else 	echo "file missing"
+			fi
+		done
+		cd "$oldpwd"
+		return $retval
+	}
+	ConfigSet() { # "FILE" CONFIGNAME "VALUE"
+	# beta TODO Returns Configuration Value
+	# 1 or 99 with file missing
+		[ -z $3 ] && echo "Usage: ConfigSet \"FI LE\" CONFIGNAME \"VALUE\"" && return 1
+		oldpwd="$(pwd)"
+		retval=99
+		for folder in "$ST_CONF_DIR" "$ST_FUNC_DIR"
+		do	cd "$folder"	
+			str="$(echo $(cat "$1"|grep $2))"
+			var="$2"
+			if [ -f "$(basename $1)" ]
+			then	if sed s/"$str"/"$2=\"$3\""/g -f "$1"
+				then	sE "Setting saved: \"$2\" with \"$3\"" "$SUCCESS"
+					retval=0
+				else	sE "Setting save failed: \"$2\" with \"$3\"" "$FAILURE"
+					retval=1
+				fi
+			else 	echo "file missing: $1"
+			fi
+		done
+		cd "$oldpwd"
+		return $retval
+	}
+	var_get_val() { # "STRING" SEARCHCHAR
+	# Searches for string and returns everything after SEARCHCHAR
+	# Returns numbers that have been cut off at the start
+		char=something
+		thisString="$1"
+		search="$2"
+		count=0
+		while [ ! "$char" = "$2" ]
+		do	((count++))
+			char=${thisString:$count:1}
+		done
+		((count++))
+		echo ${thisString:$count}
+		return $count
+	}
+	leds_toggle_str() { # [ an | aus ]  [ on | off ]
+	# Toggles a string to either + or -.
+	#
+		out=""
+		for var in $@
+		do	case "${var:1}" in
+			"n")	var="-"	;;
+			"us")	var="+"	;;
+			"ff")	var="+"	;;
+			esac
+			out+=" $var"
+		done
+		[ ! "" = "$(echo $out)" ] && \
+			echo $out && \
+			return 0 || \
+			return 1
+	}

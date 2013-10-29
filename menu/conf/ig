@@ -1,0 +1,148 @@
+#!/bin/bash
+#
+#	Desription:	A simple handler for customable configuration files
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea), erat.simon æ gmail.com
+#	Release Date:   2012.11.29
+#	Changed Date:	2013.08.07
+	script_version=0.8
+#
+#	Title
+#
+	sT "Automated Script-Tools configuration ($script_version)"
+#
+#	Variables
+#
+	src="$stDir/Scripts-in-bin"
+	[ -d /usr/bin ] && targ=/usr/bin || targ=/bin
+	DONT_USER=$XDG_CONFIG_DIR/.script-tools-dontask
+	DONE_ROOT=$HOME/.script-tools-configured
+#
+#	Display
+#
+	sE "Going to look for installed applications you might be using as defaults."
+	sE "Looking for:"
+	sE " * Browser (GUI)"
+	sE " * Editors (CLI/GUI)"
+	sE " * Filemanager (GUI)"
+	sE " * Terminals (GUI)"
+	#sE " * "
+	sE 
+	
+	press
+	
+	
+	if ! isRoot && [ ! -d $SEA_CFG_DIR ]
+	then	sE "To do set them as system default templates, this step requires one time root access."
+		! ask "Reload script as root?" && \
+			sE "If script-tools dont open an editor when it should, or if you experience other issues," && \
+			sE "edit the file:" "$SEA_LIB_DIR/system.Programs" && \
+			return 6
+		su -c "st conf ig" && mkdir -p "$SEA_CFG_DIR"
+		return $?
+	fi
+	
+	
+	press
+	
+	if isRoot && [ ! -f $DONE_ROOT ]
+	then	#
+		#	Cloned or 'bad' tarball
+		#
+		#if [ ! -d $stDir/.git ] && [ ! -d /home/.s ]
+		#then	# Was cloned from GIT
+		#	sT "Verifying scripts in /usr/bin"
+		#	cd "$src"
+		#	for this in $(ls)
+		#	do 	sP "Looking for $this" "$WORK"
+		#		if [ -f "$targ/$this" ] && [ ! -e "$targ/$this" ]
+		#		then	ask "$this exists, move to ~?" && \
+		#			mv "$targ/$this" ~
+		#		elif [ ! -h "$targ/$this" ] && isRoot
+		#		then	ln -s "$src/$this" "$targ/$this" && \
+		#				returner=0 || returner=1
+		#		elif ! isRoot
+		#		then	returner=1
+		#		else	returner=5
+		#		fi
+		#		ReportStatus $returner "Linked $this"
+		#	done
+		#fi
+	#
+	#	Check for applications
+	#
+		if [ ! -f $DONE_ROOT ]
+		then	for task in editors browsers filemanagers terminals
+			do	source $SEA_LIST_DIR/$task
+				for env in gui cli
+				do	found=""
+					C=0
+					title=${task:0:${#task}-1}
+					str="$title_$env"
+					case $env in
+					gui)	apps=( $(echo $GUI) )	;;
+					cli)	apps=( $(echo $CLI) )	;;
+					esac
+			
+					if [ ! "" = "$(echo $apps)" ]
+					then	for item in $apps
+						do	sP "Parsing $task for $env : $item" "$WORK"
+							isInstalled $item && found+=" $item"
+							let C++
+						done
+					fi
+			
+					if [ ! 0 -eq $C ] && [ $C -ge 2 ]
+					then	sE "Please select which application you want as default for $str:"
+						select default in $found;do $break;done
+					else	default=$(echo $found)
+					fi
+			
+					[ "" = "$(echo $default)" ] && sE "No application found!" "$FAIL" && exit 1
+					ReportStatus 0 "Selected for : $default"
+			
+					CFG=$SEA_VAR_DIR/system.Programs
+					search="$(grep $str $CFG)"
+					replace="$str=\"$default\""
+				#
+				#	Replace or add the default value
+				#	
+					ret=1
+					if [ ! "" = "$(echo $search)" ]
+					then	sed s,"$search","$replace",g $CFG && ret=0
+					else	echo "$replace" >> $CFG && ret=0
+					fi
+					ReportStatus $ret "Set $str to $default"
+				done
+			done
+		fi
+	elif [ ! -d $SEA_LIB_DIR ] || [ "" = "$(ls $SEA_LIB_DIR)" ]
+	then	sE "Preparing default variables..."
+		CheckPath $SEA_SCRIPT_DIR
+		CheckPath $SEA_LIB_DIR
+		
+		sT "Copy default configuration"
+		for file in $(ls $SEA_VAR_DIR)
+		do	[ ! -f $SEA_LIB_DIR/$file ] && \
+				sP "Copy files... ($(basename $file))" "$PROGRESS" && \
+					cp "$SEA_VAR_DIR/$file" "$SEA_LIB_DIR" > /dev/zero
+				ReportStatus $? "Copied file $(basename $file)"
+				[ -f "$SEA_LIB_DIR/version" ] && \
+					rm -f "$SEA_LIB_DIR/version"
+		done
+		ret=$?
+		ReportStatus $ret "Copied all default configuration files."
+		
+		sE "Do you want to configure your default_name and default_email?"
+		sE "This info will be used for newScript [-h] and for the devprj & fas packages"
+		sE "If you dont edit it, this will be used:"
+		sE "default_user:" "$default_user"
+		sE "default_email" "$default_email"
+		if ask "Edit information?"
+		then	source $SEA_LIB_DIR/system.Programs
+			sEdit $SEA_LIB_DIR/system.User
+		fi
+	else	ReportStatus 0 "All defaults already copied to $SEA_LIB_DIR"
+		ret=0
+	fi
+	return $ret

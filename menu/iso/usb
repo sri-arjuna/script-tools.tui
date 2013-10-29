@@ -1,0 +1,120 @@
+#!/bin/bash
+#
+#	sea's Script Tools: The 3rd Generation
+#
+#	Description:	Writes an imagefile to selected USB drive with DD
+#	Author: 	Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	License:        GPL v3
+#	Date Created:	2011.09.09
+#	Date Changed:	2013.08.25
+	script_version=1.4
+#	Resource:	man mkfs, fsck, cfdisk, wipefs, umount, mount
+#	Resource:	http://forums.fedoraforum.org/showthread.php?t=269547
+#	Resource:	http://forums.fedoraforum.org/showthread.php?t=270203
+#
+#	Title
+#
+	sT "sea's ISO to USB script, using DD ($script_version)"
+#
+#	Variables
+#
+	targetusb=""
+	sourcefile=""
+	devDisk=/dev/disk/by-id
+	[ "$(cat /etc/fedora-release|awk '{print $3}')" -ge 19 ] && \
+		dd_status=none || \
+		dd_status=noxfer
+		
+	for arg in ${args[@]}
+	do	if [ -b "$arg" ]
+		then	targetusb="$arg"
+		elif [ -f "$arg" ] || [ -f "$(pwd)/$arg" ] 
+		then	sourcefile="$arg"
+		fi
+	done
+	if [ "" = "$sourcefile" ] ; then
+		if test "" = "$iso2usb_default_search"	
+		then	# This is read from default configuration
+			# Or overwritten by $HOME/bin/$USER-libs/iso2usb
+			# If neither of these exist, use these defaults
+			iso2usb_default_search="$HOME /home/$USER/Downloads /opt /usr"
+		fi
+	fi
+#
+#	Set search Path
+#
+	if [ "" = "$sourcefile" ] ; then
+		selectionLis=""
+		while [ "$selectionList" = "" ] ; do
+			sT "Please choose a directory to search for an image file"
+			select sPath in $iso2usb_default_search OTHER ; do 
+			if [ $sPath = "OTHER" ]
+			then	sPath="$(input 'Enter Path: ')"
+				len=${#sPath}
+				break
+			else	len=$[ ${#sPath} +1 ]
+				break 
+			fi
+			done
+#
+#	Parsing for iso/img-images
+#
+			cd $sPath 
+			sP "Scanning $sPath"
+			for files in $(find "$sPath/." -mount -name "*.*" 2>&1) ; do
+			case $files in
+			    *.iso)	selectionList="$selectionList ${files:$len}" 	;;
+			    *.img)	selectionList="$selectionList ${files:$len}" 	;;
+			    # "*")	TODO: add other file filters here... 	;;
+			    else)	return 
+			esac
+			done
+			[ "" = "$selectionList" ] && \
+				sE "No iso/img files in $sPath" "$FAILURE"
+		done
+#
+#	Image selection
+#
+		sT "Please choose the image you want to use: "
+		select sourceImage in $selectionList ; do break ; done
+	else	sourceImage="$sourcefile"
+	fi
+	sE "Selected image:" "$sourceImage"
+# 
+#	select USB Drive
+#
+	if [ "" = "$targetusb" ] ; then
+		sT "Please choose the removable media: "
+		list="$(ls $devDisk|grep usb|grep -v part)"
+		while [ "" = "$list" ] ; do
+			read -p "$BORDER_LEFT Please insert an USB drive and press [ENTER] to continue..."  buffer
+			list="$(ls $devDisk|grep usb|grep -v part[0-9])"
+		done
+		if [ ! "$list" = "$(echo $list)" ]
+		then	select targetUsb in $list ; do
+				tDev=$(readlink -f $devDisk/$targetUsb)
+				break
+			done
+		else	targetUsb=$list
+			tDev=$(readlink -f $devDisk/$targetUsb)
+		fi
+	else	targetUsb="$(  ls /dev/disk/by-id/ -l | grep $(basename $targetusb)|grep -v part|awk '{print $9}' )"
+		
+		tDev="$targetusb"
+	fi
+	sE "Selected device:" "$tDev ($targetUsb)"
+# 
+# 	Prepare
+#
+	sT "Using '$(basename $sourceImage)' for '$tDev'" # ${targetUsb:0:(-14)}
+	sE "Delete the device's filesystem"	"$tDev"
+	ask "Are you sure to erease all data on $tDev?" && \
+		sudo dd status=$dd_status if=/dev/zero of=$tDev bs=512 count=2 > /dev/zero
+#
+#	Write
+#
+	sT "Please be patient, the progress may take a while..." 
+	sP "Writing $(basename $sourceImage) to $tDev" "$PROGRESS"
+	isofile=$sPath/$sourceImage
+	sudo dd status=$dd_status if=$isofile of=$tDev bs=1M > /dev/zero
+	ReportStatus $? "Written $sourceImage to $tDev"

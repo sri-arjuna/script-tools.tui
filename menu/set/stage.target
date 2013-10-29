@@ -1,0 +1,48 @@
+#!/bin/bash
+# ------------------------------------------------------------------------------
+# | sea's Script Tools: The 3rd Generation
+# | File Description:	Set defaut.target to selection
+	script_version=0.2
+# | Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+# | Created (y.m.d):    2012.05.30
+# | Changed:            2012.06.02
+# | License:            GPL v3
+# | Modified By:        
+# | Resource:           
+# | Special Thanks: 
+# ------------------------------------------------------------------------------
+# | Title
+	sT " sea's Boot Target changer ($script_version)"
+# |
+# | Variables
+	s=systemd/system
+	etc=/etc/$s
+	lib=/lib/$s
+	A=Abort
+	E=Emergency
+	C=Console
+	G=Graphical
+# |
+# | Display
+	sP
+	printf "\r\t$A\t\tReturn to upper menu\n"
+	sP
+	printf "\r\t$E\tBoot to nologin console\n"
+	sP
+	printf "\r\t$C\t\tBoot to console with login\n"
+	sP
+	printf "\r\t$G\tBoot into graphicel interface\n"
+
+	sE "Please select your boot target"
+	select trgt in $A $E $C $G 
+	do	case $trgt in
+		"$A")		exit 1	;;
+		"$E")	trgt=1	;;
+		"$C")	trgt=3	;;
+		"$G")	trgt=5	;;
+		esac
+		break
+	done
+	source=$lib/runlevel$trgt.target
+
+	ln -sf $source $etc/default.target

@@ -1,0 +1,33 @@
+#!/bin/bash
+#
+#	Desription:	Select a module to edit
+#	Lisence:        GPL v3
+#	Author:         sea ; < erat DOT simon æ gmail D0T com >
+#	Created:	2013.07.21
+#	Changed:	2013.08.06
+	script_version=0.2
+#
+#	Title
+#
+	title="sea's Script-Tool Configuration : System"
+	sT "$title ($script_version)"
+#
+#	Variables
+#
+	shown=no
+#
+#	Display
+#
+	if [ ! -z $5 ] 
+	then	[ -f "$SEA_LIB_DIR/$5" ] && \
+			sEdit "$SEA_LIB_DIR/$5" || \
+			sEdit "$SEA_LIB_DIR/system.$5"
+		return $?
+	fi
+	sE "Please select a systemfile to edit:"
+	select tFile in Back $(ls "$SEA_LIB_DIR"|grep ^sys);do
+		[ Back = $tFile ] && return 6
+		sEdit "$SEA_LIB_DIR/$tFile"
+		[ ! $shown = no ] && sE "Please select a file to edit:"
+		shown=yes
+	done

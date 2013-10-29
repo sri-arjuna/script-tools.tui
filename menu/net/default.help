@@ -1,0 +1,6 @@
+Some tools parse html pages to retrieve data it uses.
+If these pages change their code, or the adress uses another tree structure,
+then please let me know so i can fix it.
+
+Other tools are using installed applications, 
+of which I'm not always aware of their changes.

@@ -1,0 +1,175 @@
+
+#
+#	Koji Handler Script, 2012.10.04 by sea
+#
+#	This script is written with best intention to help, 
+#	but there is NO warranty and I deny ANY responsiblity
+#	that may or may not affect your system.
+#
+#
+#	Lisence:	GPL v3
+#	Author: 	Simon A. Erat (sea)
+#	Date Created:	2012.10.04
+#	Date Changed:	2013.09.04
+#
+#	Subs
+#
+	GetKojiTargets() { # Parses "koji list-targets"
+	# Returns the output as a string array
+	#
+		echo $(koji list-targets|grep -v ^\-\-\-|grep -v ^Nam|awk '{print $1}')
+	}
+	RPM_Check_Koji() { #
+	# Checks if ~/fedora-browser-cert.p12 exists
+	# if not it creates it
+		retval=no
+		for there in ~ $HOME $ST_CONF_DIR/fas
+		do	if [ -f "$there/fedora-browser-cert.p12" ]
+			then	retval=yes
+				break
+			fi
+		done
+		var=$(find $HOME/ name fedora-browser-cert.p12)
+		[ ! "" = "$(echo $var)" ] && retval=yes
+		if [ $retval = yes ]
+		then	return 0
+		else	sE "Did not find CLI Koji configuration, creating now..." "$PROGRESS"
+			fedora-packager-setup && \
+			return 0 || return 1
+		fi
+	}
+	RPM_Build_Koji() { # [ LABEL ]
+	# Builds the SRC RPM from LABEL
+	# On Koji for selected TAARGET
+        #
+	#	Check for arguments
+	#
+		RPM_Check_Koji || return 0
+		test "" = "$1" && \
+			sE "Select project file to build:" && \
+			lbl=$(PRJ_Select) || \
+			lbl="$1"
+		tmpfile="$ST_CACHE_DIR/koji"
+			
+	#
+	#	Retrieve project data
+	#
+		source $ST_USER_PRJ/$lbl/rpm || return 1
+		source $ST_USER_PRJ/$lbl/conf || return 1
+		if [ ! -f $ST_USER_PRJ/$lbl/koji ]
+		then	suggest="$(cat /etc/system-release|awk '{print $3}')"
+			if [ "" = "$(echo $sugest)" }
+			then	kt=$(input "What is the current release?")
+			else	kt="$suggest"
+			fi
+			cat > $ST_USER_PRJ/$lbl/koji << EOF
+# For each 'releases'-entry it adds 'target' in front to get buildtarget
+# Eg: releases="1 2 3" and target="f" will produce 3 builds with the targets f1 f2 and f3
+releases="$[ $suggest - 1 ] $[ $suggest + 1 ] $[ $suggest + 2 ]"
+target="f"
+EOF
+			ask "Edit the koji config file?" && \
+				sEdit $ST_USER_PRJ/$lbl/koji
+		fi
+		source $ST_USER_PRJ/$lbl/koji
+		ReportStatus $? "Configuration loaded: $prj_name"
+		CheckPath "$(dirname $tmpfile)"
+	#
+	#	Select source
+	#
+		sT "Building up package \"$prj_name\" to Koji"
+		cd $outputdir 
+		rm -f $tmpfile ; touch $tmpfile
+		
+		files=$(ls "$outputdir/"|grep "$prj_name-[0-9].[0-9].[0-9]-*"|grep ".src.")
+		
+		for src in $files;do
+			sP "Parsing $src package..." "$PROGRESS"
+			for kt in $releases;do
+        			[ -f /etc/fedora-release ] && insert=c || insert=""
+        			if [ "" = "$(ls $outputdir|grep $target$insert$kt)" ]
+        			then	[ -z $rpm_build_arch ] && \
+        					opt="" || \
+        					opt=" --scratch --arch-override=$rpm_build_arch"
+        				cmd="koji build ${opt} $target$kt $src"
+        				sP "Building: $cmd" "$WORK"
+        				$cmd | grep task|grep -v tasks >> "$tmpfile"
+        				ReportStatus $? "Built $prj_name as $target$kt"
+        			else	ReportStatus 4 "Skiped targetbuild as source"
+        			fi
+        		done
+		done
+	#
+	#	Packages done
+	#	Get them to the output dir
+	#
+		list_task=$(grep Creat "$tmpfile" |awk '{print $3}')
+		found=""
+		found_first=""
+		found_second=""
+		sT "Analyzing created tasks $list_task..."
+		for entry in $list_task
+		do 	blob=$entry
+		#
+		#	Get task page"
+		#
+			url="http://koji.fedoraproject.org/koji/taskinfo?taskID=$blob"
+			sP " " "$(basename $url)"
+			curl --progress-bar -o "$tmpfile-$blob" "$url"
+			found+=" $(grep $prj_name $tmpfile-$blob |grep href|grep -iv buildarch|sed s,\",\ ,g|sed s,=,\ ,g|awk '{print $7}')"
+		done
+		#
+		#	Get package overview
+		#
+		sT "Parsing overview of $found"
+		for this in $found
+		do	ti="$this"
+			sP "Get overview of" "$ti"
+			url="http://koji.fedoraproject.org/koji/taskinfo?taskID=$ti"
+			curl --progress-bar -o "$tmpfile-$blob-$ti" "$url"
+			tmpvar="$(grep -i $prj_name $tmpfile-$blob-$ti|grep -i buildarch|sed s,=,\ ,g|sed s,\",\ ,g|awk '{print $4}')"
+			found_first+=" $tmpvar"
+		done
+		#
+		#	Get package links
+		#
+		sT "Parse for links of $found_first"
+		for that in $found_first
+		do	ta="$that"
+			sP "Parse links" "$ta"
+			curl --progress-bar -o "$tmpfile-$blob-$ti-$ta" "http://koji.fedoraproject.org/koji/taskinfo?taskID=$ta"
+			tmpvar="$(grep $ta/$prj_name $tmpfile-$blob-$ti-$ta|grep href|sed s,\",\ ,g|sed s,=,\ ,g|awk '{print $3" "$6}')"
+			found_second+=" $tmpvar"
+		done
+		#
+		# 	Download packages
+		#
+		sT "Downloading $(echo $found_second|wc|awk '{print $2}' ) files:"
+		for f in $found_second
+		do	if [ 20 -lt ${#f} ]
+			then	sP "Downloading: $(basename $f)..." "$WORK"
+				curl --progress-bar -o "$outputdir/$(basename $f)" "$f"
+				ReportStatus $? "Downloaded: $(basename $f)"
+			fi
+		done
+	}
+	KOJI_New() { # LABEL
+	#
+	#
+		if [ ! -f $ST_USER_PRJ/$1/koji ]
+		then	suggest="$(cat /etc/system-release|awk '{print $3}')"
+			if [ "" = "$(echo $sugest)" }
+			then	kt=$(input "What is the current release?")
+			else	kt="$suggest"
+			fi
+			cat > $ST_USER_PRJ/$lbl/koji << EOF
+# For each 'releases'-entry it adds 'target' in front to get buildtarget
+# Eg: releases="1 2 3" and target="f" will produce 3 builds with the targets f1 f2 and f3
+releases="$[ $suggest - 1 ] $[ $suggest + 1 ] $[ $suggest + 2 ]"
+target="f"
+EOF
+				ask "Edit the koji config file?" && \
+					sEdit "$ST_USER_PRJ/$lbl/koji"
+		
+		fi
+	}

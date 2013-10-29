@@ -1,0 +1,107 @@
+#!/bin/bash
+#
+#	It will create a file, format that file with the select filesystem
+#	and if its swap, it will add it automaticly to /etc/fstab as tmpfs,
+#	so you only will need to modify the entry.
+#
+#	NOT YET WORKING PROPERLY, adding as tmpfs at least.
+#
+#	This script requires sea's Script-Tools to display properly
+#	I suggest the "repo"-way to install ;)
+#
+#	Author: 		Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created (y.m.d):	2013.01.24
+#	Changed:		2013.02.21
+#	License:		GPL v3
+	script_version=0.3
+#
+#	Script Check
+#
+	[ ! -f /usr/share/script-tools/st.cfg ] && \
+		echo -e "# | This script requires sea's Script-Tools" && \
+		echo -e "# | Please visit: http://sea.hostingsociety.com/?p=Script-Tools&stc=Installation" && \
+		echo -e "# | I suggest the 'repo'-way...\n# |" && \
+		return 1
+#
+#	Title, Variables
+#
+	sT " sea's Filesystem Creator ($script_version)"
+	label=""
+#
+#	Defaults, Arguments
+#
+	if [ "" = "$(echo $3$4)" ];then
+		# Set default values
+		filename=/tmpfs.virtual
+		sizeinmb=128
+		ask "Change filename: $filename?" && \
+			filename=$(input "New absolute filename: ")
+		ask "Change size of $sizeinmb mb?" && \
+			sizeinmb=$(input "New size in MB: ")
+	else
+		for arg in $@;do
+			if [ ! "" = "$(echo $arg|grep /)" ]
+			then	filename=$arg
+			else	sizeinmb=$arg
+			fi
+		done
+	fi
+	size=$[ $sizeinmb / 2 ]
+#
+#	Create Host File
+#
+	sE "What is the desired fs-type for the file:"
+	select filesystem in ext3 ext4 msdos ntfs swap vfat xfs;do break ; done
+	sE "Creating $filename with $sizeinmb MB" "$PROGRESS"
+	dd if=/dev/zero of=$filename bs=1M count=$sizeinmb && \
+		sE "Created $filename, $sizeinmb mb" "$SUCCESS" ||
+		return 1
+#
+#	Filesystem
+#
+	sE "Creating $filesystem on $filename" "$PROGRESS"
+	if [ swap = $filesystem ];then
+		mkswap -L swap $filename $size && retval=0 || retval=1
+		[ $retval ] && \
+			ask "Add it to fstab?" && \
+			cat >> /etc/fstab << EOF
+$filename	tmpfs	swap	defaults	0	0
+EOF
+	else
+		ask "Add a label (one word description)? " && \
+		label=$(input "Whats the label?: ")
+		[ ! "$label" = "" ] && dolab="-l $label "
+	mkfs.$filesystem $dolab $filename<<SCRIPT
+y
+
+SCRIPT
+		[ 0 = $? ] && retval=0 || retval=1
+	fi
+#
+#	Result output
+#
+	[ $retval ] && \
+		sE "Created $filesystem on $filename" "$SUCCESS" ||
+		sE "Could not create $filesystem on $filename" "$FAILURE"
+#
+#	Add swap to fstab
+#	Create script file
+#
+	if [ ! swap = $filesystem ];then
+		mountpoint=$(input "Where do you want to mount $filename?: ")
+		shfile=$HOME/bin/mnt-$filesystem-$sizeinmb
+		[ ! -d $HOME/bin ] && mkdir $HOME/bin
+		cat > $shfile << EOF
+#!/bin/bash
+[ ! -d $mountpoint ] && mkdir -p $mountpoint
+[ ! "" = "$(mount|grep $mountpoint)" ] && umount $mountpoint
+mount $filename $mountpoint
+EOF
+		sE
+		sE "Gratulations, the file $filename has been created." "$SUCCESS"
+		sE "To access it, a new script ($shfile) has been created..."
+		sE
+		chx $shfile
+		ask "Load filesystem ($filename) now?" && \
+			source $shfile
+	fi

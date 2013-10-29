@@ -1,0 +1,57 @@
+#!/bin/sh
+#	Author: 	Simon A. Erat (sea)
+#	Contact:	erat.simon@gmail.com
+#
+#	Variable defaults
+#
+	script_version=0.1
+	ME="$(basename $0)"
+	help_text="\r$ME ($script_version)
+		\rUsage: $ME [options] [arguments]
+		\rWhere options are:
+		\r\t-h\tThis screen
+		\r\t-l\tList available PS1 templates
+		\r"
+	TITLE="sea's PS1 changer"
+	DIR_SELECT=$ST_TEMPLATE_DIR
+	DIR_SELECT=~/.priv/prjs/script-tools2/templates/ps1
+	PS_ORG="$(grep 'export PS1' $HOME/.bashrc)"
+	PS_CUR="$(grep $DIR_SELECT $HOME/.bashrc)"
+#
+#	Load own/users TUI configuration?
+#
+	source tui
+#
+#	Variable handling
+#
+	#[[ -z $1 ]] && echo -e "$help_text" && exit $RET_HELP
+	case "$1" in
+	"-h")	echo -e "$help_text" ; exit $RET_HELP 	;;
+	"-l")	ls $DIR_SELECT ; exit $RET_HELP 	;;
+	esac
+#
+#	Display
+#
+	tui-title "$TITLE ($script_version)"
+	tui-echo "Original PS1:"	"$PS_ORG"
+	[[ "#" = "${PS_ORG:0:1}" ]] && \
+		tui-echo "Current PS1:" \
+			"$(basename $(echo $PS_CUR|awk '{print $2}'))"
+#
+#	Question or argument passed?
+#	
+	if [[ -f "$DIR_SELECT/$1" ]]
+	then	newPS="$1"
+	elif tui-bol-yesno "Change PS1?" 
+	then	select newPS in $(ls $DIR_SELECT);do break;done
+	else	exit
+	fi		
+
+	tui-echo "Selected:" "$newPS"
+	if [[ "" = "$(printf $PS_CUR)" ]] 
+	then	printf "source $DIR_SELECT/$newPS\n" >> $HOME/.bashrc
+		tui-status $? "Saved $newPS"
+	else	sed s,"$PS_CUR","source $DIR_SELECT/$newPS",g -i $HOME/.bashrc
+		tui-status $? "Changed to $newPS"
+	fi
+	tui-echo "Source $HOME/.bashrc to apply changes" "$INFO"

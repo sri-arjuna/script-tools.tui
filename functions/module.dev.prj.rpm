@@ -1,0 +1,249 @@
+
+# ------------------------------------------------------------------------------
+# | sea's Script Tools: The 3rd Generation
+# | File Description:	Handles RPMbuild commands
+# | Author:             Simon A. Erat (sea) <erat.simon æ gmail.com>
+# | Created (y.m.d):    2012.06.24
+# | Changed:            2013.09.06
+# | License:            GPLv3
+# | Modified By:        
+# | Resource:           man rpmbuild
+# | Special Thanks:     
+# ------------------------------------------------------------------------------
+# | Title
+    
+# |
+# | Subs
+	RPM_New() { # [ LABEL ]
+	# Creates a new sub entry in LABEL
+	# Provide location of: specfile, changelog
+	#
+	#	Check for arguments
+	#
+		lbl=""
+		test "" = "$1" && \
+			lbl=$(PRJ_Select) || lbl="$1"
+		source $ST_USER_PRJ/$lbl/conf
+	#
+	#	Get input
+	#
+		output="$ST_USER_PRJ/$lbl/rpm"
+		#rpm_spec_file=$(input "Please provide full path to specfile ($ST_USER_PRJ/$lbl/data/$prj_name.spec)")
+		#rpm_changelog=$(input "Please provide full path to changelog ($ST_USER_PRJ/$lbl/data/changelog)")
+		sE "Select the arch to build:"
+		select rpm_build_arch in $(arch) $(cat $ST_CONF_DIR/lists/Architectures);do break;done 
+		
+		sE "Select default packages to build:"
+		select default_builds in "All -ba" "AllbutSource -bb" "SourceOnly -bs";do default_build=$(echo $default_builds|awk '{print $2}') ; break;done
+	#
+	#	Verify they're not empty
+	#
+		test "" = "$rpm_spec_file" && rpm_spec_file="\$ST_USER_PRJ/\$lbl/data/\$prj_name.spec"
+		test "" = "$rpm_changelog" && rpm_changelog="\$ST_USER_PRJ/\$lbl/data/changelog"
+		CheckPath $(dirname $rpm_spec_file)
+	#
+	#	Save the file
+	#
+		
+		test -f "$output" && \
+			ask "$output exists, abort?" && \
+			return 1
+		
+		cat > $ST_USER_PRJ/$lbl/rpm << EOF
+# RPM configuration file for $lbl, created by sea's Script-Tools $stVer
+	rpm_spec_file=$rpm_spec_file
+	rpm_changelog=$rpm_changelog
+	rpm_build_arch=$rpm_build_arch
+	default_build="$default_build"
+EOF
+		if [ ! -f "$rpm_spec_file" ] || [ -x "$rpm_spec_file" ]
+		then	#test ! ask "$rpm_spec_file does not exist, create now?" && return 1
+			CheckPath "$(dirname $rpm_spec_file)" # ] && mkdir -p "$(dirname $rpm_spec_file)"  
+			tmp="$(RPM_Spec_Template)"
+			tmp+="\n* $(date +'%a %b %d %Y') - $default_mail - $version\n- Initial release\n-" 
+			echo -e "$tmp" > "$rpm_spec_file"
+		fi
+	}
+	RPM_Changelog() { # [ LABEL ]
+	# Edit the changelog of LABEL
+	#
+	#
+	#	Check for arguments
+	#
+		test "" = "$1" && \
+			sE "Select project file to edit:" && \
+			lbl=$(PRJ_Select) || lbl="$1"
+	#
+	#	Retrieve project path
+	#
+		source $ST_USER_PRJ/$lbl/conf || return 1
+		source $ST_USER_PRJ/$lbl/rpm || return 1
+		sE "Please select what you want to do with:" "$rpm_changelog"
+		select mnu in Add Edit;do break;done
+		case $mnu in
+		Add)	AddChangelog "$rpm_changelog"	;;
+		Edit)	sEdit "$rpm_changelog"  	;;
+		esac
+	}
+	RPM_Spec() { # [ LABEL ]
+	# Edit the spec file of LABEL
+	#
+		#
+	#	Check for arguments
+	#
+		test "" = "$1" && \
+			sE "Select project file to edit:" && \
+			lbl=$(PRJ_Select) || lbl="$1"
+	#
+	#	Retrieve project path
+	#
+		source $ST_USER_PRJ/$lbl/rpm || return 1
+		
+	#
+	#	Does it exist?
+	#
+		chk="$(dirname $rpm_spec_file)"
+		[ ! -d "$chk" ] && mkdir -p "$chk"
+		[ ! -f $rpm_spec_file ] && \
+			ask "Create a new specfile from template?" && \
+			echo "$(echo $(RPM_Spec_Template))" > "$rpm_spec_file" && \
+			echo "* $(date +'%a %b %d %Y') $default_user - $version
+				\r- Initial release" >> "$rpm_spec_file"
+		sEdit "$rpm_spec_file" #|| $EDITOR_CLI $rpm_spec_file
+	}
+	RPM_Spec_Template() { #
+	# Copy an empty spec template
+	# from internal templates
+		if [ ! "" = "$lbl" ] 
+		then	for f in $(ls $ST_USER_PRJ/$lbl/);do
+			[ -f "$ST_USER_PRJ/$lbl/$f" ] && source "$ST_USER_PRJ/$lbl/$f"
+			done
+		fi
+		
+		for item in git gh sf
+		do	case $item in
+			git)	spec=empty.spec	;;
+			gh)	spec=github.spec ;;
+			sf)	spec=sourceforge.spec ;;
+			esac
+		done
+		tmp="$(cat $stDir/Script-Core/Templates/dev/$spec)"
+		echo "$tmp"
+	}
+	RPM_Spec_Combine() { # [ LABEL ]
+	# Prints the file output to stdout
+	# 
+	#
+	#	Check for arguments
+	#
+		test "" = "$1" && \
+			sE "Select project file to edit:" && \
+			lbl=$(PRJ_Select) || lbl="$1"
+	#
+	#	Retrieve project path
+	#
+		source $ST_USER_PRJ/$lbl/conf	|| return 1
+		source $ST_USER_PRJ/$lbl/rpm	|| return 1
+		
+		if [ -x "$rpm_spec_file" ];then
+			[ ! -d "$(dirname $rpm_spec_file)" ] && mkdir -p "$(dirname $rpm_spec_file)"  
+			tmp=$(RPM_Spec_Template)
+			echo "$tmp" > "$rpm_spec_file"
+		fi
+		cat $rpm_spec_file
+	}
+	RPM_Clear() { # USERNAME
+	# Wipes and creates rpm build tree
+	#
+		rpmdev-wipetree
+		rpmdev-setuptree
+		rm -fr $outputdir/*
+		return
+		test "" = "$1" && sE "Usage: RPM_Clear USERNAME" && return 1
+		
+		case $1 in
+		root)	hm=/root	;;
+		*)	hm=/home/$1	;;
+		esac
+		
+		dest=$hm/rpmbuild
+		
+		sP "Cleaning up: $dest"		"$WORK"
+		sudo su $1 -c rpmdev-wipetree
+		 rpmdev-setuptree
+		ReportStatus $? "Buildtree created"
+		
+		sudo chown $1 $dest -R
+	}
+	RPM_Build() { # [ LABEL ]
+	# Loads project LABEL information and
+	# builds from current settings.
+	#
+	#	Check for arguments
+	#
+		test "" = "$1" && \
+			sE "Select project file to edit:" && \
+			lbl=$(PRJ_Select) || \
+			lbl="$1"
+		[ ! -d $ST_USER_PRJ/$lbl ] && return 1
+	#
+	#	Retrieve project path
+	#
+		for item in conf rpm
+		do	[ -f "$ST_USER_PRJ/$lbl/$item" ] && sP "Loading $item" "$PROGRESS" && \
+				source $ST_USER_PRJ/$lbl/$item && \
+				ReportStatus $? "Loaded: $item"
+		done
+		[ -z $outputdir ] && outputdir=$DEFAULT_SF_PATH
+		CheckPath "$outputdir"
+		sE "Loaded project: $prj_name"		"$DONE"
+	#
+	#	Cleanup rpmbuild
+	#
+		sT "Prepare Environment"
+		#RPM_Clear
+	#
+	#	Changelog & Spec File
+	#
+		sP "Prepare $rpm_spec_file" "$WORK"
+		RPM_Spec_Combine $lbl > "$outputdir/$prj_name.spec"
+		ln -sf "$outputdir/$prj_name.spec" "$HOME/rpmbuild/SPECS/"
+		sE "Saved specfile in: " "$outputdir/$prj_name.spec"
+		sE "Created symlink in:" "$HOME/rpmbuild/SPECS/"
+	#
+	#	Pack the files
+	#
+		sP "Building tarball of \"$lbl\""	"$PROGRESS"
+		if Prj_Tarball $lbl
+		then	tarball=$outputdir/$(ls $outputdir/|grep tar)
+			checkval=$HOME/rpmbuild/SOURCES/
+			#str_tmp="$ST_USER_PRJ/$lbl/scripts/rpm.before"
+			ln -sf $tarball	$checkval/$(basename $tarball)
+			sE "Built tarball at: $tarball"		"$SUCCESS"
+		else	sE "NOT built tarball ($tarball)"	"$FAILURE"
+			return 1
+		fi
+	#
+	#	Build it
+	#
+		sT "Start rqmbuild"
+		rpmbuild $default_build --target $rpm_build_arch  $HOME/rpmbuild/SPECS/$prj_name.spec
+		if ReportStatus $? "Built packages for $prj_name using \"$default_build\""
+		then	cd $HOME/rpmbuild
+			list=$(find ./ -name $prj_name*rpm)
+		else	return 1
+		fi
+	#
+	#	Display the files been built
+	#	
+		sT "Move built files to $outputdir"
+		if [ ! empty = "$list" ]
+		then	sE "RPM build '$prj_name'" "$SUCCESS"
+			sE "Files moved to $outputdir..."
+			for f in $list;do 
+				sE " * $(basename $f)"
+				mv $f $outputdir/
+			done
+		else	ReportStatus 1 "Could not build $prj_name"
+		fi
+	}

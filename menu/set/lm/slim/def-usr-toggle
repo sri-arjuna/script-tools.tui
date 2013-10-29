@@ -1,0 +1,40 @@
+#!/bin/bash
+# ------------------------------------------------------------------------------
+# | sea's Script Tools: The 3rd Generation
+# | File Description:	Handle Login Manager things - SLIM
+	script_version=0.1
+# | Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+# | Created (y.m.d):    2012.05.30
+# | Changed:            2012.05.30
+# | License:            GPL v3
+# | Modified By:        
+# | Resource:           
+# | Special Thanks: 
+# ------------------------------------------------------------------------------
+# | Title
+	sT "Slim : Toggle default user name ($script_version)"
+# |
+# | Vars
+
+# | One liners
+
+# |
+# | Display
+slim_conf=/etc/slim.conf
+search_term="default_user"
+status=$(grep "$search_term" $slim_conf)
+
+sP "Togge autologin for slim..." "$PROGRESS"
+
+if [ "${status:0:1}" = "#" ]
+then	SF="# $search_term"
+	RW="$search_term"
+	go="enabled"
+else	SF="$search_term"
+	RW="# $search_term"
+	go="disabled"
+fi
+
+sed -i s/"$SF"/"$RW"/g $slim_conf && \
+	sE "Successfully $go default_user" "$SUCCESS" ||\
+	sE "Could not toggle autologin." "$FAILURE"

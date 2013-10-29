@@ -1,0 +1,58 @@
+#!/bin/bash
+#
+#	Changes GRUB2 Fonts
+#
+#
+#	License:        GPL v3
+#	Author:         Simon A. Erat (sea)
+#	Release Date:   2012.06.04
+#	Changed Date:	2013.06.15
+	script_version=0.6
+#
+#	Title
+#
+	sT "sea's GRUB2 Font changer ($script_version)"
+	[ ! isRoot ] && sE "Requires root access!" "$WARN" && return 1
+#
+#	Font settings / Variables
+#
+	fonts=""
+	fontdir=/usr/share/fonts/dejavu #/{dejavu,liberation,gnu-free}
+	test ! -d $fontdir && fontdir=$(dirname $fontdir)
+	tmpfonts=$(find $fontdir -name *.ttf) #|grep Mono )
+	for f in $tmpfonts; do fonts="$fonts $(basename $f)";done
+	fontsizes="6 8 10 12 14 16 18 20 22 24 26"
+	grubdir=/boot/grub2
+	grubfile=/etc/default/grub
+	tmpfile=/tmp/grub
+#
+#	Action
+#
+	sE "Please choose a font:"
+	select font in Back $fonts
+	do	[ Back = $font ] && sE " " "$BACK" && break
+		font_src=$font
+		sE "Select a font size for $font:"
+		select fsize in $fontsizes;do break;done
+		font="${font:0: ( -4 ) }-$fsize.pf2"
+		#
+		# Actualy create the font
+		#
+		sP "Generating font:" "$(basename $font)" "$WORK"
+		grub2-mkfont --output="$grubdir/fonts/$font" --size=$fsize "$fontdir/${font_src:0: ( -3 )}ttf" > /dev/zero
+		#
+		#	Update grub defaults
+		#
+		if [ $? -eq 0 ] 
+		then	sE "Built font $font" "$DONE" 
+			repl="$(grep GRUB_FONT $grubfile)"
+			if [ "" = "$(echo $repl)" ]
+			then	echo "GRUB_FONT=/boot/grub2/$font" >> $grubfile
+			else	sed s\\"$repl"\\"GRUB_FONT=$grubdir/fonts/$font"\\g -i $grubfile
+			fi
+			sE 
+			ask "Rebuild GRUB2?" && \
+			grub2-mkconfig -o /boot/grub2/grub.cfg > /dev/zero
+		fi
+		break
+	done

@@ -1,0 +1,243 @@
+#!/bin/rpmspec
+Name:       script-tools
+Version:    0.8.7
+Release:    beta2%{?dist}
+Summary:    Diffrent tools written in BASH
+Group:      System Environment/Shells
+
+License:    GPLv3
+URL:        https://sourceforge.net/p/script-tools/
+#Source0:   http://downloads.sf.net/%{name}/%{name}-%{version}.tar.xz
+Source0:    http://sea.fedorapeople.org/%{name}/Review/%{name}/%{name}-%{version}.tar.gz
+
+BuildArch:  noarch
+
+# Really required:
+Requires:   curl
+Requires:   bash
+Requires:   nano
+Requires:   wget
+Requires:   sudo
+
+# Recomended, but would supply install help
+Requires:   cifs-utils
+Requires:   ImageMagick
+Requires:   wicd
+Requires:   wpa_supplicant
+
+# Cant hurt too much, but would supply install help
+Requires:   dmidecode
+Requires:   systemd-analyze
+Requires:   youtube-dl
+
+Provides: %{name} = %{version}
+
+#
+#    #
+#        Package main: script-tools
+#    #
+#
+
+%description
+Several tools written in bash, providing scripted
+functions to be used for one owns script.
+Also gives some assistance tweaking grub2/-themes,
+login manager (desktop managers), boot animation (plymouth),
+writing iso images to an usb-key and more.
+
+Some of my personal favorite tools available:
+* blame | to figure out your slowest boot sequence
+* chx 'File that exists in $PATH' | chmod +x any file in $path
+* st tweak repo toggle [repofilename[.repo]] 
+* st iso usb
+* st net yt [VIDEO-or-PLAYLIST-url]
+* lxscreenshot FILENAME.jpg|png
+* st tweak plymouth 
+* st set lm lxdm autologin-toggle
+* st net dl-fed  | to select a download among diffrent and current Fedora images
+
+
+#
+#    #
+#        Package sub: prjdev
+#    #
+#
+
+%package prjdev
+Summary: Provides project manager/handler for development projects
+Group: Development/Tools
+Requires:   %{name} >= %{version}-%{release}
+
+#Requires:   %{name}-fas
+Requires:   fedora-packager
+Requires:   rpmdevtools
+Requires:   git
+Requires:   ftp
+Requires:   lftp
+Requires:   openssh-clients
+#Requires:   createrepo
+Requires:   livecd-tools
+Requires:   custom-kickstarts
+Requires:   fedora-kickstarts
+Requires:   l10n-kickstarts
+Requires:   spin-kickstarts
+
+%description       prjdev
+Provides a 'project' manager to easy handle/release your projects.
+
+Using configuration files to distribute your projects with 1 line...
+* before it starts, it ask if you would like to change the config files
+  if you say yes, you'll be prompted for each config before its opened
+  (so no need to search for them)
+* it then asks, which tasks of your configs to do (rpm, koji, git...)
+-- end of user interaction --
+(* planned: compiled)
+* packaged
+* generates (basic) review htmls
+* sent to koji (AND downloaded successfull builds!) 
+* Using GIT provides 2 sets of 'preconfigs' for sourceforge (stable) and
+  github (planned/unstable).
+  Note: that it uploads the code for all, but upload files to sourceforge only
+* Upload your built files automaticly to a ftp
+* creates and upload repositry
+All this with these few words: "st dev release [LABEL]"
+
+
+#
+#    #
+#        Package sub: sysadmin
+#    #
+#
+%package sysadmin
+Summary: Tools for experienced users / risk (alpha)
+Requires:   %{name} >= %{version}-%{release}
+
+%description       sysadmin
+Contains tools specialiced on closer system tasks.
+As i miss practical NEED for such tools, they tend to be less stable.
+I dont add them if they dont work at all or 
+even corrupt data (even if used properly).
+
+Examples:
+* Create a file containing a filesystem (virtfs) (alpha)
+* cron job 'handler' (alpha)
+* PS1 modifications
+* (planed/alpha) Backup tool
+* import gpg keys
+* SELinux toggle
+* wipe a device
+
+
+
+#
+#    #
+#        Package sub: fas 
+#    #
+#
+%package fas
+Summary: Handlers for some task FAS accounts can come by (planned/alpha)
+Requires:   %{name} >= %{version}-%{release}
+
+Requires:   koji
+Requires:   fedora-review
+
+%description       fas
+Requires you to have a FAS account
+(Planned!) If you install this project before creating projects,
+it optimizes the default config-values accordingly
+* fedora-review
+* mock
+
+
+#
+#    #
+#        Installation
+#    #
+#
+
+%prep
+%setup -q -c %{SOURCE0}
+
+%build
+# nothing to do
+
+%install
+rm -rf   %{buildroot}
+mkdir -p %{buildroot}%{_datarootdir}/%{name}
+mkdir -p %{buildroot}/etc/yum.repos.d/ \
+         %{buildroot}%{_bindir} \
+         %{buildroot}/etc/skel \
+         %{buildroot}%{_datarootdir}/applications/ \
+         %{buildroot}%{_sysconfdir}/profile.d/
+#
+#	check with sub package?
+#	since %{name}/UI_CLI/{fas,dev}
+# 	are seperate 
+#
+mv %{name}/* %{buildroot}%{_datarootdir}/%{name}
+rm -fr %{buildroot}%{_datarootdir}/%{name}/.git
+rm -f  %{buildroot}%{_datarootdir}/%{name}/UI_CLI/custom
+rm -fr %{buildroot}%{_datarootdir}/%{name}/UI_CLI/conf.org
+rm -fr %{buildroot}%{_datarootdir}/%{name}/UI_CLI/prj.todo
+ln -sf %{_datarootdir}/%{name}/st %{buildroot}%{_bindir}/st
+ln -sf %{_datarootdir}/%{name}/Script-FAS/script-tools-fas.sh %{buildroot}%{_sysconfdir}/profile.d/
+ln -sf %{_datarootdir}/%{name}/Script-Core/Templates/%{name}.desktop %{buildroot}%{_datarootdir}/applications/%{name}.desktop
+cp -pa %{_datarootdir}/%{name}/Scripts-in-bin/* %{buildroot}%{_bindir}/
+
+%clean
+rm -rf %{buildroot}
+
+%files
+%defattr(-,root,root,-)
+%doc %{_datarootdir}/%{name}/Documentation
+%{_datarootdir}/applications/%{name}.desktop
+%{_datarootdir}/%{name}/st
+%{_datarootdir}/%{name}/st.cfg
+%{_datarootdir}/%{name}/Configuration_Variables
+%{_datarootdir}/%{name}/Script-Core
+%{_datarootdir}/%{name}/Included_Functions
+%{_datarootdir}/%{name}/Configuration_Lists
+%{_datarootdir}/%{name}/Scripts-in-bin
+%{_datarootdir}/%{name}/UI_CLI/conf   
+%{_datarootdir}/%{name}/UI_CLI/iso
+%{_datarootdir}/%{name}/UI_CLI/net
+%{_datarootdir}/%{name}/UI_CLI/set
+%{_datarootdir}/%{name}/UI_CLI/ts
+%{_datarootdir}/%{name}/UI_CLI/tweak
+%{_datarootdir}/%{name}/UI_CLI/default.info
+%{_datarootdir}/%{name}/UI_GUI
+# And register for uninstall the symlinks too:
+%{_bindir}/bash-colors
+%{_bindir}/blame
+%{_bindir}/chx
+%{_bindir}/isEmpty
+%{_bindir}/isLVM
+%{_bindir}/mem
+%{_bindir}/moalpa
+%{_bindir}/newScript
+%{_bindir}/p
+%{_bindir}/qbkup
+%{_bindir}/rmtf
+%{_bindir}/screenshot
+%{_bindir}/st
+%{_bindir}/upd
+%{_bindir}/vimail
+%{_bindir}/yumreset
+%{_bindir}/yumresume
+
+%files             prjdev
+%doc %{_datarootdir}/%{name}/Documentation
+%{_datarootdir}/%{name}/UI_CLI/dev
+%{_datarootdir}/%{name}/Script-prjdev
+
+%files             fas
+%doc %{_datarootdir}/%{name}/Documentation
+%{_datarootdir}/%{name}/UI_CLI/fas
+%{_datarootdir}/%{name}/Script-fas
+%{_sysconfdir}/profile.d/script-tools-fas.sh
+
+%files              sysadmin
+%doc %{_datarootdir}/%{name}/Documentation
+%{_datarootdir}/%{name}/UI_CLI/sa
+
+%changelog

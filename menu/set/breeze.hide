@@ -1,0 +1,45 @@
+#!/bin/bash
+# ------------------------------------------------------------------------------
+# | sea's Script Tools: The 3rd Generation
+# | File Description:	IF the DE selected is LXDE, ask if 'breeze' shall be applied.
+	script_version=0.1
+# | Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+# | Created (y.m.d):    2012.06.10
+# | Changed:            2012.06.10
+# | License:            GPL v3
+# | Modified By:        
+# | Resource:           
+# | Special Thanks:     
+# ------------------------------------------------------------------------------
+# | Title
+    sT " sea's Breeze ($script_version)"
+# |
+# | Variables
+    breeze_source=$stDir/it/templates/skel.tar.gz
+    breeze_dest=/etc/skel
+# |
+# | One Liners
+    
+# |
+# | Subs
+    RemoveCK() { # TODO
+    #
+    #
+    	echo TODO
+    }
+# |
+# | Display
+    sE "sea's Breeze is a configured LXDE, based upon blueish colors" "Its layout is designed to be used on netbooks." 
+    sE "However, by default its starting Sylpheed, Firefox and Rhythmbox to their seperate screens."
+    sE
+    if ask "Do you want to copy this configuration to $breeze_dest?"
+    then	cp $breeze_source $breeze_dest
+    		tar -axf $breeze_dest/$(basename $breeze_source)
+    		test -d $breeze_dest/.config && mv $breeze_dest/.config $breeze_dest/.config.bak.$(date +'%y%m%d')
+    		rm -f $breeze_dest/*.gz
+    		
+    		if ask "Do you want to get rid of ConsoleKit? (BETA !!)"
+    		then	RemoveCK
+    		fi
+    fi
+    sT "Continue with default installation..."

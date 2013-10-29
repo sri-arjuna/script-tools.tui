@@ -1,0 +1,65 @@
+#!/bin/bash
+#
+#	Description:	Exports an existing grub2 themes
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea)
+#	Release Date:   2013.07.02
+#	Changed Date:	2013.07.02
+	script_version=0.1
+#
+#	Title
+#
+	if [ ! -f /usr/share/script-tools/st.cfg ]
+	then	alias sT="echo"
+		alias sP="printf"
+		alias sE="echo"
+		SUCCESS="[ yay :) ]"
+		FAILURE="[ noo :( ]"
+		PROGRESS="[ wait.. ]"
+	fi
+	sT "sea's Grub2 Theme exporter ($script_version)"
+	#[ ! 0 -eq $UID ] && sE "Script requires root rights!" && return 1
+#
+#	Variables
+#
+	def=/etc/default/grub
+	dir_themes=/boot/grub2/themes
+	dir_themes_d=""
+	for d in $(ls $dir_themes);do [ -d "$dir_themes/$d" ] && themes="$themes $d";done
+#
+#	Arguments
+#	
+	target=""
+	for arg in $@
+	do	if [ ! "$arg" = "grub2" ] && [ ! "$arg" = "tweak" ] && [ ! "$arg" = "theme" ] && [ ! "$arg" = "export" ]
+		then	cd "$dir_themes"
+			if [ -d "$arg" ]
+			then	target="$arg"
+			elif [ ! "" = "$(ls $arg)" ]
+			then	for this in $(ls $arg)
+				do	[ ! icons = $this ] && \
+						[ -d $this ] && \
+						target="$target $this"
+				done
+			elif [ "-h" = "$arg" ]
+			then	echo -e "help screen"
+				return 99
+			fi
+		fi
+	done
+#
+#	Display
+#
+	if [ "" = "$target" ]
+	then	sE "Available themes to export:" 
+		sE "${themes}"
+		sE "Which one do you want to export?"
+		select target in Back $themes;do [ "$entry" = "Back" ] && return 0;break;done
+	fi
+	sE "Selected theme to export:" "$target"
+	targetfile="$HOME/GRUB2-Theme-${target}-$(date +'%Y%m%d').tar.gz"
+	tar acf "$targetfile" "$target"
+	if [ $? -eq 0 ]
+	then	ReportStatus 0 "Saved $target as $targetfile"
+	else	ReportStatus 1 "Couldnt save $target..."
+	fi

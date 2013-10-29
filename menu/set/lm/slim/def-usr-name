@@ -1,0 +1,66 @@
+#!/bin/bash
+# ------------------------------------------------------------------------------
+# | sea's Script Tools: The 3rd Generation
+# | File Description:	Handle Login Manager things - SLIM
+	script_version=0.2
+# | Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+# | Created (y.m.d):    2012.05.30
+# | Changed:            2012.06.02
+# | License:            GPL v3
+# | Modified By:        
+# | Resource:           
+# | Special Thanks: 
+# ------------------------------------------------------------------------------
+# | Title
+	sT "Slim : Set default user name ($script_version)"
+# |
+# | Vars
+	slim_conf=/etc/slim.conf
+	search_term="default_user"
+	users=$(ls /home --hide=lost+found)
+	status=$(grep -m 1 "$search_term" $slim_conf)
+# | One liners
+	
+# |
+# | Subs
+	
+# |
+# | Display
+	sE "Current Name: $slimname" "Users: $users"
+	sE "Change default username SLiM..." "$PROGRESS"
+	case "$(echo $status | awk '{print $1}' )" in
+	"#")	slimname=$(echo $status | awk '{print $3}' ) ;;
+	*)		slimname=$(echo $status | awk '{print $2}' ) ;;
+	esac
+	if [ "$slimname" = "$users" ]
+	then	# you are alone on this computer
+			sE "You cant change yourself." "$FAILURE"
+			select solo in back toggle AddUser
+			do	case $solo in
+				back)		break	;;
+				toggle)		source $stDir/scripts/$1/$2/$3/def-usr-toggle
+							break	;;
+				AddUser)	source $stDir/scripts/set/users
+							break	;;
+				esac
+			done
+	else	# You are not alone... *sing sing*   ;)
+			sE "Please select the user for autologin:"
+			newUsr=$(WhichUser)
+
+
+			if [ ! "${status:0:1}" = "#" ]
+			then	SF="$status"
+					RW="$search_term $newUsr"
+			else	SF="$status"
+					RW="# $search_term $newUsr"
+			fi
+
+			sE "SF: $SF"
+			sE "RW: $RW"
+
+
+			sed -i s/"$SF"/"$RW"/g  $slim_conf && \
+				sE "Successfully set default_user to $newUsr" "$SUCCESS" ||\
+				sE "default_user is still set to $slimname" "$FAILURE"
+	fi

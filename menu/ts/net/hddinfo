@@ -1,0 +1,54 @@
+#!/bin/bash
+#
+#	Prints out some information about your hard disk
+#
+#
+#	Author: 		Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created (y.m.d):	2013.01.24
+#	Changed:		2013.01.24
+#	License:		GPL v3
+	script_version=0.1
+#
+#	Display
+#
+	[ ! 0 -eq $UID ] && echo "Root rights required." && sleep 1 #exit 1
+	source /usr/share/script-tools/st.cfg
+	tmpfile=/tmp/out
+	sT "sea's HDD info script ($script_version)"
+	sT "Temprature / Heat"
+	[ "" = "$(rpm -q hddtemp)" ] && sInst hddtemp
+	sE "$(hddtemp)"
+	sE
+	sleep 1
+	
+	sT "lsblk"
+	lsblk #> $tmpfile
+	#while read line;do sE "$line";done< $tmpfile
+	sleep 1
+	
+	sT "blkid"
+	blkid > $tmpfile
+	while read line;do sE "$line";done< $tmpfile
+	sE
+	sleep 1
+	
+	sT " cat /etc/fstab"
+	while read line;do sE "$line";done < /etc/fstab
+	sE
+	sleep 1
+	
+#
+#	Recognize if its GPT
+#
+	echo -e "\r# | " > $tmpfile
+	for entry in $(ls /dev/[hs]d[az])
+	do	isGPT fdisk $(basename $entry) && \
+			cmd=gdisk || \
+			cmd=fdisk
+		sT " $(Capitalize $cmd) output"
+		su -c "$cmd -l $entry >> $tmpfile"
+	done
+	
+	while read line;do [ ! "" = "$(echo $line)" ] && sE "$line";done< $tmpfile
+	sE
+	sleep 1

@@ -1,0 +1,74 @@
+#!/bin/bash
+#
+#	Changes GRUB2 UUID usage
+#
+#
+#	License:        GPL v3
+#	Author:         Simon A. Erat (sea)
+#	Release Date:   2012.07.12
+#	Changed Date:	2013.07.12
+	script_version=0.1
+#
+#	Title
+#
+	sT "sea's GRUB2 UUID usage toggle ($script_version)"
+	! isRoot  && sE "Requires root access!" "$WARN" && return 1
+#
+#	Variables
+#
+	def=/etc/default/grub
+	dir_themes=/boot/grub2/themes/
+	dir_themes_d=""
+	#for d in $(ls $dir_themes);do [ -d "$dir_themes/$d" ] && dir_themes_d="$dir_themes_d $d";done
+#
+#	Looking for existing entry
+#	
+	gstr="GRUB_DISABLE_LINUX_UUID="
+	tline="$(grep $gstr $def)"
+	#echo $str
+	#echo $tline
+	if [ "#" = "${tline:0:1}" ]
+	then	current=disabled
+	elif [ "false" = "$(echo $tline|sed s,=,' ',g|awk '{print $2}')" ]
+	then	current=disabled
+	elif [ "true" = "$(echo $tline|sed s,=,' ',g|awk '{print $2}')" ]
+	then	current=enabled
+	elif [ "" = "$(echo $tline)" ]
+	then	current=none
+	fi
+	cur=$current
+#
+#	Display
+#
+	sE "GRUB_DISABLE_LINUX_UUID currently is:" "$(Capitalize $current)"
+	if ! ask "Change it?"
+	then	return		
+	fi
+	case $cur in
+	disabled)	change="true"
+			label=enabled	;;
+	enabled)	change="false"
+			label=disabled	;;
+	none)		change="true"
+			label=enabled	;;
+	esac
+	REPL="$gstr$change"
+	
+	if [ none = $cur ] 
+	then	printf "GRUB_DISABLE_LINUX_UUID=true\n" >> "$def"
+	fi
+	
+	search="$(grep DISABLE_LINUX_UUID $def)"
+	sed s,"$search","$REPL",g -i "$def" && \
+	returnval=0 || returnval=1
+	ReportStatus $returnval "Changed to $label"
+
+#
+#	Rebuild GRUB Menu, if successfull
+#
+	if [ 0 -eq $returnval ]
+	then	ask "Rebuild GRUB2?" && \
+		grub2-mkconfig -o /boot/grub2/grub.cfg > /dev/zero && \
+		return 0
+	fi
+	return 1

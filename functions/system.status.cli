@@ -1,0 +1,78 @@
+
+# ------------------------------------------------------------------------------
+#	sea's Script Tools: The 3rd Generation
+#	Description:	Handles status messages
+#	Version:	0.3
+#	Author: 	Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created:	2012.04.25
+#	Changed:	2013.08.13
+#	License:	GPL v3
+#	Modified By:	
+#	Resource:	    
+# ------------------------------------------------------------------------------
+#
+#	Title
+#
+    
+#
+#	Variables
+#
+
+#
+#	Subs
+#
+	ReportStatus() { # RETVAL|$? [ "Message" ]
+	# Parses default $? retval into success (0) or fail (1) messages
+	# also progress (2), todo (3), skip (4)
+		
+		retvalue[0]="$DONE"	# "$SUCCESS"
+		retvalue[1]="$FAIL"	# "$FAILURE"
+		retvalue[2]="$WORK"	# "$PROGRESS"
+		retvalue[3]="$TODO"
+		
+		retvalue[4]="$SKIP"
+		retvalue[5]="$NEXT"
+		retvalue[6]="$BACK"
+		retvalue[7]="$CANC"
+		
+		retvalue[10]="$ENAB"
+		retvalue[11]="$DIAB"
+		
+		
+		retvalue[99]="$HELP"
+		retvalue[111]="$INFO"
+		
+		[ -z "$1" ] && ReportStatus 1 "Usage: $0 \$?|0...111 [ \"Message to user\" ]" && return 1
+		if [ "$1" = "-h" ]
+		then	echo "$0"
+			echo "Usage: $0 \$? [ \"Message to user\" ]"
+			echo "Interpreted numbers:"
+			for num in $(seq 0 1 120)
+			do	str="$(echo "${retvalue[$num]}")"
+				[ ! "" = "$(echo $str)" ] && \
+					echo -e "\t$str : $num"
+			done
+			echo
+			return 99
+		else	tmp="$2"
+			len="${#tmp}"
+			tooSmall=false
+		
+			if [ "$(echo $len)" = "" ] 
+			then	tooSmall=true
+			else	[ $(tput cols) -lt $len ] && tooSmall=true
+			fi
+		
+			if [ ! "" = "${retvalue[$1]}" ]
+			then	[ $tooSmall = true ] && \
+					sE "${tmp:0:( $len / 2 )}" && \
+					sE "${tmp:( $len / 2 )}" "${retvalue[$1]}" || \
+					sE "$2" "${retvalue[$1]}"
+			else	[ $tooSmall = true ] && \
+					sE "${tmp:0:( $len / 2 )}" && sE "${tmp:( $len / 2 )}" "ErrNr: $1 :: $FAILURE" || \
+					sE "$2" "ErrNr: $1 :: $FAILURE"
+			fi
+
+			return $1
+		fi
+	}

@@ -1,0 +1,28 @@
+#!/bin/bash
+#
+#	Checks for existing lvm volumes using lvm command
+#
+#	Author: 		Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created (y.m.d):	2013.01.24
+#	Changed:		2013.08.26
+#	License:		GPL v3
+	script_version=0.4
+#
+#	Display
+#
+	[ "-h" = "$1" ] && \
+		echo -e "$0 ($script_version)
+		\rChecks for existing lvm volumes
+		\rOr returns that you're on a LVM free system
+		\r" && exit 99
+	
+	[ "" = "$(which lvm)" 2>&1 ] && \
+		echo "  No lvm application found | Not capable handling LVM" && \
+		exit 1
+	
+	if [ 0 -eq $UID ]
+	then	pvscan
+		lvscan
+	else	sudo pvscan
+		sudo lvscan
+	fi

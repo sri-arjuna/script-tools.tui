@@ -1,0 +1,76 @@
+#!/bin/bash
+#
+#	Description:	Trying to easy language setting change.
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea), erat.simon æ gmail. com
+#	Release Date:   2012.11.30
+#	Changed Date:	2013.08.06
+#
+	script_version=0.2
+#
+#	Title
+#
+	sT "sea's Keyboard Manager ($script_version)"
+	[ ! $EUID -le 0 ] && sE "Must be root to run this script." && return 1
+#
+#	Variables
+#
+	dir_home=/usr/share/i18n
+	dir_lang=$dir_home/locales
+	dir_confon=$dir_home/charset
+	dir_org=$(pwd)
+	#kb_list_raw=$(ls $dir_lang) #|egrep [a-z]_[A-Z][@][A-Z][a-z])
+	counter_raw=0
+	unset land[@] lang[@] keyb[@] raws[@] 
+	country=""
+#
+#	Subs
+#
+	
+#
+#	Fill the arrays
+#
+	cd $dir_lang
+	
+	sP "Loading countries..." "$WORK"
+	raw=( $(ls|sed s,_,\ ,g|sed s,@,\ ,g|awk '{print $2}'|grep -v ^[a-z]|sort ))
+	for item in ${raw[@]}; do sP "Loading countries: $item..." "$WORK";[ "" = "$(echo $country|grep $item)" ] && country+=" $item";done
+	ReportStatus $? "Loaded $(echo $country|wc -l|awk '{print $2}') countries."
+#
+#	Display
+#
+	sT "Please select your country:"
+	sleep 1
+	select myland in $country;do
+		mycountry=$myland
+		lang=( $(ls|grep $myland|sed s,_,\ ,g|awk '{print $1}')  ) > /dev/zero
+		break
+	done
+	
+	sT "Select your language of $myland"
+	select mylang in "${lang[@]}";do break;done
+	
+	sE "Selected country:" "$mycountry"
+	sE "Selected language:" "$mylang"
+	
+	
+	sT "Change what?"
+	A="Permanent console keyboard layout"
+	B="GRUB2"
+	C=""
+	select menu in "$A" "$B" "$C" 
+	do	case "$menu" in
+		"$A")	target=/etc/bashrc
+			echo "setxkbmap -layout $layout" >> $target
+			;;
+		"$B")	sT "GRUB2 TODO"
+			;;
+		"$C")	
+			;;
+		# "$A")	
+		#	;;
+		esac
+		break
+	done
+	#cat $dir_lang/
+	echo loadkeys "$mylang_$mycountry"

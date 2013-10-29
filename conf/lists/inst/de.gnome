@@ -1,0 +1,10 @@
+   control-center
+   gnome-panel
+   gnome-session
+   gnome-shell
+   gnome-themes-standard
+   metacity
+   notification-daemon
+   PackageKit-command-not-found
+   PackageKit-gtk-module
+   PackageKit-gtk3-module

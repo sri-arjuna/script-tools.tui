@@ -1,0 +1,36 @@
+#!/bin/bash
+#
+#	Desription:	
+#	Lisence:        GPL v3
+#	Author:         sea ; < erat DOT simon æ gmail D0T com >
+#	Created:	2013.07.21
+#	Changed:	2013.07.21
+	script_version=0.1
+#
+#	Title
+#
+	title=""
+	sT "$title ($script_version)"
+#
+#	Variables
+#
+	basePath="$SEA_SCRIPT_DIR"
+	cd "$SEA_SCRIPT_DIR"
+	files=( * )
+#
+#	Display
+#
+	sE "Select a file to remove from $SEA_SCRIPT_DIR:" "There is no way back!"
+	select tFile in Back "${files[@]}"
+	do	[ -d "$tFile" ] && \
+			sE "$tFile is a directory." && \
+			ask "Remove it and all subdirs?" && \
+			rm -fr "$tFile"
+		[ -f "$tFile" ] && \
+			ask "Are you sure to remove $tFile?" && \
+			rm -f "$tFile"
+		[ Back = "$tFile" ] && \
+			ReportStatus 6 && \
+			return 6
+		sE "Please reload the script to update the list."
+	done

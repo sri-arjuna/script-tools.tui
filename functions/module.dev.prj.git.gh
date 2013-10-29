@@ -1,0 +1,48 @@
+
+# 
+#	sea's Script Tools: The 3rd Generation
+#	Description:	Handles code synchronisation with github.com
+#	Author:		Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created:	2013.08.12
+#	Changed:	2013.08.12
+#	License:	GPL v3
+#	Resource:	
+#
+#
+#	Subs
+#
+	GH_Edit() { # [ LABEL ]
+	# Lets you select an existing github project
+	# Opens it with either $editor_cli or $editor_gui
+		[ -z $1 ] && \
+			sE "Select project file to edit:" && \
+			lbl=$(PRJ_Select) || \
+			lbl="$1"
+		thisFile="$ST_USER_PRJ/$lbl/gh"
+		
+		sP "Editing: $thisFile" "$WORK"
+		sEdit "$thisFile"
+		ReportStatus $? "Edited: $thisFile"
+	}
+	GH_New() { # [ LABEL ]
+	# Creates a new github project
+	# 
+		[ -z $1 ] && \
+			sE "Select project file to edit:" && \
+			lbl=$(PRJ_Select) || \
+			lbl="$1"
+		thisFile="$ST_USER_PRJ/$lbl/gh"
+		
+		sourcef="$ST_USER_PRJ/$lbl/git"
+		if [ ! -f "$sourcef" ] 
+		then	ReportStatus 1 "Requires a git project"
+			ask "Add one now?" && \
+				GIT_New $lbl && \
+				source "$sourcef" || \
+				return 1
+		else 	source "$sourcef"
+		fi
+		
+		sT "$(Capitalize $prj_name) GitHub configuration"
+		
+	}

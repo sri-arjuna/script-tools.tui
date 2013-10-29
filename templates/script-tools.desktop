@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Script-Tools
+Comment=A collection of shell scripts to accomplish diffrent tasks.\n* Tweak your boot (Plymouth/GRUB2/services)\n* Automate developing processes...\nand more...
+Exec=/usr/bin/st
+Icon=/usr/share/script-tools/templates/st_logo.svg
+Path=$HOME
+Terminal=true
+StartupNotify=false
+Categories=System;Application;X-Fedora;

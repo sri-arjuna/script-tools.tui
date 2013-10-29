@@ -1,0 +1,11 @@
+NetworkManager
+NetworkManager-glib
+glib-networking
+NetworkManager-gnome
+NetworkManager-gtk
+NetworkManager-openconnect
+NetworkManager-openswan
+NetworkManager-openvpn
+NetworkManager-pptp
+NetworkManager-vpnc
+authconfig-gtk

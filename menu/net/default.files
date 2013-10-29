@@ -1,0 +1,2 @@
+/etc/fstab, /etc/exports, /etc/hosts, $SEA_CACHE_DIR/dl-youtube, 
+/etc/sysconfig/network-scripts/[ifcfg|keys]-*

@@ -1,0 +1,73 @@
+#!/bin/bash
+#
+#	Description:	Imports grub2 themes
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea)
+#	Release Date:   2013.07.02
+#	Changed Date:	2013.07.02
+	script_version=0.1
+#
+#	Title
+#
+	if [ ! -f /usr/share/script-tools/st.cfg ]
+	then	alias sT="echo"
+		alias sP="printf"
+		alias sE="echo"
+		SUCCESS="[ yay :) ]"
+		FAILURE="[ noo :( ]"
+		PROGRESS="[ wait.. ]"
+	fi
+	sT "sea's Grub2 Theme importer ($script_version)"
+	#[ ! 0 -eq $UID ] && sE "Script requires root rights!" && return 1
+#
+#	Variables
+#
+	def=/etc/default/grub
+	dir_themes=/boot/grub2/themes
+	dir_themes_d=""
+	#for d in $(ls $dir_themes);do [ -d "$dir_themes/$d" ] && themes="$themes $d";done
+#
+#	Arguments
+#	
+	this_source=""
+	for arg in $@
+	do	if [ -f "$arg" ]
+		then	if [ $arg = $(basename $arg) ]
+			then	sE "Found file in $(pwd)"
+				this_source="$(pwd)/$arg"
+			else	this_source="$arg"
+			fi
+		elif [ "-h" = "$arg" ]
+		then	echo -e "help screen"
+			return 99
+		fi
+	done
+#
+#	Display
+#
+	if [ "" = "$this_source" ]
+	then	this_source=$(input "Please type (absolute, if not present) path:")
+	fi
+	sE "Importing tarball:" "$this_source"
+	
+	dir_tmp=/usr/tmp/grub2-import
+	CheckPath "$dir_tmp" ; cd "$dir_tmp"
+	
+	tar -axf "$this_source" || exit 1
+	if [ -d boot ]
+	then	name=$(ls boot/grub/theme)
+		mv boot/grub2/themes/* /boot/grub2/themes
+	else	name=$(ls)
+		echo So far so good
+		ls
+		pwd
+		mv * /boot/grub2/themes/
+	fi
+	
+	
+	if [ $? -eq 0 ]
+	then	ReportStatus 0 "Importet $name from $this_source"
+	else	ReportStatus 1 "Couldnt import $name from $this_source..."
+	fi
+	
+	rm -fr "$dir_tmp"

@@ -1,0 +1,155 @@
+#!/bin/bash
+# ------------------------------------------------------------------------------
+# | sea's Script Tools: The 3rd Generation
+# | File Description:	Creates a live image, either from current system or minimal approach
+	script_version=0.3
+# | Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+# | Created (y.m.d):    2012.05.10
+# | Changed:            2012.06.05
+# | License:            GPL v3
+# | Modified By:        
+# | Resource:           
+# | Special Thanks:     
+# ------------------------------------------------------------------------------
+# | Title
+    sT "Welcome to the Fedora live image creation script ($script_version)"
+# |
+# | Variables
+    FLCC="livecd-creator"
+    lcc=$(which $FLCC)
+    export live_pkgs=/tmp/live_package_list
+    export kspath=$stDir/it/templates
+    ksfile="int" #for international
+    export curDate=$(date +'%y%m%d')
+    liveisoMenu="CreateKS CreateISO PrepareDevice WriteISO_on_USB "
+# |
+# | One Liners
+    test "" = "$lcc" && sE "Missing $FLCC, installing now..." && \
+        sudo sInst $(cat $stDir/lists/inst/apps.dev.livecd)
+# |
+# | Subs
+    CreateIsoImage() { # KICKSTARTFILE LABEL [OUTPUT-PATH]
+    # Changes to the output if supplied, else current dir is the output path
+    # Creates the iso image with supplied kickstart file
+    	olddir=$(pwd)
+    	test -z "$3" && cd "$3"
+    	sudo livecd-creator \
+			--config="$1" \
+			--fslabel="$2" --cache=/var/cache/live
+		ls *.iso --color=auto
+		cd $olddir
+    }
+    LiveISO_to_USB() { # PATH DEVICE
+    # Select one of the ISO in PATH, or take the iso provided with path,
+    # and write it to /dev/DEVICE.
+	usb=/dev/$2
+    	if ask "Make the ISO able to boot from USB?"
+		then	if [ -f $1 ]
+			then	iso=$1
+			else	select iso in $(ls "$1/*.iso") ; do break; done
+			fi
+			if sudo $(which livecd-iso-to-disk) $iso $usb 
+			then	sE "Successfully written $iso to $usb" "$SUCCESS" 
+					return 0
+			else	sE "There was an error..." "$FAILURE"
+					return 1
+			fi
+		fi
+    }
+    PrepareDevice() { #
+    # Asks the user to enter the device's name
+    #
+    	sE "Please type the actual device name, eg: sdb | sdc1" 
+		read -p "$BORDER_LEFT /dev/ [sdb]" dev
+		test "" = "$dev"  && dev=/dev/sdb || dev=/dev/$dev
+		
+		sudo mkfs.vfat $dev && return 0 || return 1
+    }
+    Create_Kickstart_Wizard() { #
+    #
+    #
+		if ask "Do you want to create a live image from your current system?"
+		then    ksfile="$ksfile-current_a.ks"
+			if [ ! -f "$live_pkgs" ]
+			then	if ask "Overwrite existing: $live_pkgs" 
+				then	sP "Writing current packages to $live_pkgs" "$PROGRESS"
+					cat $kspath/$ksfile				  		 > "$live_pkgs"
+					yum list installed|awk '{print $1}' 	>> "$live_pkgs"
+					cat $kspath/${ksfile:0:(-4)}b.ks 		>> "$live_pkgs"
+					sE "Written current packages to $live_pkgs" "$SUCCESS"
+				fi
+			else 	sE "Using existing $live_pkgs" "$SKIP"
+			fi
+			ksfile="$live_pkgs"
+			liveTask="current"
+		else    ksfile="$ksfile-minimal"
+			liveTask="minimal"
+		fi
+		
+		if [ "$liveTask" = "minimal" ]
+		then    if ask "Shall your minimal image include a DE (y) or CLI only (n)?"
+		        then    live_pkgs="$kspath/$ksfile-gui.ks"
+		        		liveTask="GUI"
+		        else    live_pkgs="$kspath/$ksfile-cli.ks"
+		        		liveTask="CLI"
+		        fi
+		fi
+    }
+    Prepare_LiveISO_Label() { # cli|gui , cur|tem|min [DESKTOP]
+    #
+    #  
+    	label=""
+    	#sP "Parsing system information to generate a label" "$PROGRESS"
+    	
+    	liveDistro=$(echo $distro|awk '{print $1}')
+    	test "" = "$liveDistro" && liveDistro=$(uname -r) 
+    	#sE "Recognized Distro: $liveDistro" "$SUCCESS"
+    	
+		
+		de=$XDG_CURRENT_DESKTOP
+		case $2 in
+			cur)	case $1 in
+					"cli")	label="$liveDist-commandline-$curDate"	;;
+					"gui")	label="$liveDist-$3-desktop-$curDate"	;;
+					esac
+					;;
+			min)	case $1 in
+					"cli")	label="$liveDist-minimal-console"		;;
+					"gui")	label="$liveDist-minimal-$3-desktop"	;;
+					esac
+					;;
+			tem)	label="$liveDist-$3"	;;
+		esac
+		
+		echo "$label"
+	}
+# |
+# | Display
+    select liveEntry in automagic $liveisoMenu
+    do 	case $liveEntry in
+    	"CreateISO")		sP "Creating ISO file, this WILL take a while.." "$PROGRESS"
+							CreateIsoImage "$live_pkgs" "$(Prepare_LiveISO_Label)" "$HOME" && \
+								sE "Created ISO file." "$SUCCESS" || \
+								sE "Could not create the ISO file.." "$FAILURE" 
+		;;
+    	"CreateKS")			Create_Kickstart_Wizard	
+    	;;
+    	"PrepareDevice")	PrepareDevice			
+    	;;
+    	"WriteISO_on_USB")	sE "Please select the iso you want to write to usb."
+				select wIso in $(ls $HOME/*.iso);do break;done
+				sE "Please enter the device's name:"
+				read -p "$BORDER_LEFT /dev/ [sdb]" tDev
+				test "" = "$tDev" && tDev=sdb
+				LiveISO_to_USB $wIso $tDev
+    	;;
+    	"automagic")		Create_Kickstart_Wizard	
+    						sP "Creating ISO file, this WILL take a while.." "$PROGRESS"
+							CreateIsoImage "$live_pkgs" "$(Prepare_LiveISO_Label)" "$HOME"
+							dev="$(PrepareDevice)"
+							LiveISO_to_USB $HOME $dev
+	;;
+    	esac
+    done
+    
+    	

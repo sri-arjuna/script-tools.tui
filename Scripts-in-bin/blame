@@ -1,0 +1,74 @@
+#!/bin/bash
+# 	Original Code by:
+#			RupertPumpkin, as posted on FedoraForums.org
+#			http://forums.fedoraforum.org/showthread.php?t=279109
+#			Reused with permission.
+#
+#	Description:	Prints a descending sorted list of the time the services required
+# 	Changed by:	sea
+#	File created:	2012.06.15
+#	File changed:	2013.08.25
+	script_version=0.4
+#
+#	script-tools check
+#
+	seaconf=/usr/share/script-tools/st.cfg
+	if [ ! -f $seaconf ]
+	then	# No script tools, basic handling, expecting fedora
+		if [ "" = "$(which systemd-analyze)" ]
+		then	sudo yum install systemd-analyze --nogpg
+		fi
+
+		date +'Year / Month / Day : %Y%m%d'
+		systemd-analyze blame|awk '{print $0;sum=sum+$1} END {print NR,"services: Total =",sum/1000,"seconds"}'
+		systemd-analyze time
+	else	# Script tools available, full support
+		source $seaconf > /dev/zero
+		if [ "" = "$(which systemd-analyze)" ]
+		then	sInst systemd-analyze --nogpg
+		fi
+		
+		doLog=""
+		beMute=false
+		curlog="$SEA_CACHE_DIR/blame.$(date +'%y%m%d')"
+		
+		for arg in $@;do
+			case $arg in
+			l|log)		doLog="$HOME/blame.log"		;;
+			m|mute)		beMute=true
+					doLog="$HOME/blame.log"		;;
+			"-h")		echo -e "blame ($script_version)
+					\rblame [-h] [mute|log]
+					\r\t-h\tThis help screen
+					\r\tmute\tNo visual output, append to log (\$HOME/blame.log)
+					\r\tlog\tVisual output and append to log (\$HOME/blame.log)
+					"
+					exit 99
+			esac
+		done
+		
+		#[ false = $beMute ] && \
+		#	sT "RupertPumpkin's SystemD Blame script on $(hostname)" && \
+		#	sE "wrapped by sea ($script_version)" && \
+		sP "Generating Data..." "$PROGRESS"
+		
+		[ ! -f $curlog ] && touch $curlog
+		sT "RupertPumpkin's SystemD Blame script"		>  $curlog
+		#sE "wrapped by sea ($script_version)"			>> $curlog
+		sE "$(date +'Year / Month / Day : %Y %m %d')"		>> $curlog
+		cat > $curlog.todo << EOF
+$(systemd-analyze blame|awk '{print $0;sum=sum+$1} END {print NR,"services: Total =",sum/1000,"seconds"}')
+EOF
+		while read line;do
+			sE "$line" 	>> $curlog
+		done < $curlog.todo
+		sE "$(systemd-analyze time)"	>> $curlog
+		
+		if [ ! $beMute = true ]
+		then	cat $curlog
+		fi
+		if [ ! "" = "$doLog" ]
+		then	cat $curlog >> $doLog
+		fi
+		rm $curlog
+	fi

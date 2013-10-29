@@ -1,0 +1,26 @@
+#!/bin/bash
+#
+#	License:	GPL v3
+#	Description:	Pings one time - a random url if no IP is provided
+#	Author: 	Simon A. Erat, erat.simon æ gmail . com
+#	Date created:	2012.11.14
+#	Date changed:	2013.08.25
+	script_version=0.3
+#
+#	Help
+#
+	[ "-h" = "$1" ] && \
+		echo -e "$(basename $0) ($script_version)
+		\rPings one time - a random url if no IP is provided
+		\rUsage: $(basename $0) [URL]
+		\r" && exit 99
+#
+#	Display
+#
+	cmd="ping -c1"
+	if [ -z $1 ]
+	then	urls=('web.de' 'google.com' 'yahoo.com' 'redhat.com' 'ubuntu.com' 'fedoraforum.org' 'fedoraproject.org' 'archlinux.org' 'linux.com' 'sourceforge.com' )
+		source /usr/share/script-tools/Included_Functions/system.math.rnd
+		$cmd ${urls[$(rnd ${#urls[@]})]}
+	else	$cmd $1
+	fi

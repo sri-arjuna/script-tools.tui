@@ -1,0 +1,2 @@
+GUI=(eterm gnome-terminal konsole lxterminal xterm)
+CLI=()

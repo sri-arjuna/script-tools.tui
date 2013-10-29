@@ -1,0 +1,21 @@
+#!/bin/bash
+! isRoot && ReportStatus 1 "Requires root for permanent change!"
+script_version=0.1
+avail_langs=(ch cz de es it ru us)
+sT "sea's Keyboard layout changer (BETA: $script_version)"
+sE "Currently available:" "$(echo ${avail_langs[@]})"
+select lay in Back ${avail_langs[@]};do break;done
+[ "Back" = "$lay" ] && return
+cmd="setxkbmap -layout $lay" #-print |  xkbcomp - $DISPLAY 2>&1
+sT "Executing: $cmd"
+sP "Changing $lay..." "$WORK"
+$cmd
+tar=/etc/bashrc
+ReportStatus $? "Changed layout: $lay"
+isRoot && \
+	if ask "Add \"$cmd\" to $tar for after the next boot?"
+	then	if [ "" = "$(grep setxkbmap $tar|grep -v \#)" ]
+		then	echo "$cmd" >> $tar
+		else	sed s,"$(grep setxkbmap $tar)","$cmd",g $tar
+		fi
+	fi

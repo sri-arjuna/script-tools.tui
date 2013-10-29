@@ -1,0 +1,159 @@
+
+#
+#	Yum Repo toggle Script, 2012.10.04 by sea
+#
+#	This script is written with best intention to help, 
+#	but there is NO warranty and I deny ANY responsiblity
+#	that may or may not affect your system.
+#
+#
+#	Lisence:	GPL v3
+#	Author: 	Simon A. Erat (sea)
+#	Date Created:	2012.10.04
+#	Date Changed:	2013.07.18
+#
+#	Variables
+#	
+	export dir_repo=/etc/yum.repos.d
+	export str_search="enabled"
+#
+#	Subs
+#
+	rpm_toggle_repo() { # [NAME]
+	# Enables or disable the repo name 
+	# supplied or selected
+		[ ! isRoot ] && sE "Requires root rights." && return 1
+		repodir=/etc/yum.repos.d
+		#
+		#	Parse argument, or select file
+		#
+		if [ "" = "$1" ]
+		then	select repo in $(ls $repodir);do break;done
+		else	arg="$1"
+			[ ".repo" = "${arg:${#arg}-5}" && \
+				repo="$arg" || repo="$arg.repo"
+		fi
+		#
+		#	Toggle value of $repo
+		#
+		r="$repodir/$repo"
+		en="enabled=0"
+		dis="enabled=1"
+		checkval=$(grep "enabled" $r)
+		case "$checkval" in
+		"$en")	sed -i s/"$en"/"$dis"/g $r	&& \
+					sE "Disabled: $repo" ;;
+		"$dis")	sed -i s/"$dis"/"$en"/g $r	&& \
+					sE "Enabled: $repo" ;;
+		esac
+	}
+	repofiles_status() { # [ -t /path/to/tempfile ]
+	# Lists the status of each repo in /etc/yum.repos.d, exports $repo_list
+	# Saves list to a tempfile if argument suplied
+		export dir_repo=/etc/yum.repos.d
+		export str_search="enabled"
+		counter=2
+		tempcontent=""
+	
+		[ ! -z $1 ] && [ -z $2 ] && \
+			echo "Usage: repofiles_status [ -t /path/to/tempfile ]" && \
+			return 1
+		
+		sT "Repo status"
+		for each in $(ls $dir_repo);do
+			this_name="$(basename $each)"
+			repo_list="$repo_list ${this_name:0: ( -5 )}"
+			this="$(Repo_isEnabled $each)"
+			sE "$counter) ${this_name:0: ( -5 )}" "$this"
+			tempcontent+="$this\t$this_name\n"
+			((counter++))
+		done
+		
+		if [ ! -z $2 ]
+		then	TD="$(dirname $2)"
+			FN="$(basename $2)"
+			TF="$TD/$FN"
+			CheckPath "$TD"
+			isEmpty -ce "$TF" > /dev/zero || echo "" > "$TF"
+			printf "$tempcontent" >> "$TF"
+		fi
+		export repo_list
+	}
+	rpm_toggle_repo_all() { # t|e|d
+	#
+	#
+		test "" = "$1" && mode=t | mode=$1
+		repodir=/etc/yum.repos.d
+		en="enabled=0"
+		dis="enabled=1"
+		
+		sT "Change all repos: $mode"
+		for repo in $(ls $repodir)
+		do 	r=$repodir/$repo
+			sP "Working with: $repo" "$PROGRESS"
+			case $mode in
+			t)	rpm_toggle_repo $repo	;;
+			e)	# enable
+				sed -i s/"[#| ]$dis"/"$en"/g $r	&& \
+					sE "Enabled: $repo"
+				;;
+			d)	# disable
+				sed -i s/"[#| ]$en"/"$dis"/g $r	&& \
+					sE "Disabled: $repo" 
+				;;
+			esac
+		done
+		sE "Changed all repos." "$SUCCESS"
+	}
+	Repo_Select() { # 
+	#
+	#
+		select repo in $(ls $dir_repo);do break;done
+		echo $repo
+	}
+	Repo_isEnabled() { # [ REPONAME ]
+	#
+	#
+		if [ "" = "$1" ]
+		then	repo=$(Repo_Select)
+		else	if [ -f "$dir_repo/$1" ]
+			then	repo="$1"
+			else	repo="$1.repo"
+			fi
+		fi
+		retvar=$(cat $dir_repo/$repo|grep $str_search)
+		retval="$(echo $retvar|awk '{print $1}')"
+		if [ ! "#" = "$(echo $retval|awk '{print $1}')" ]
+		then	retval="$(echo $retval|awk '{print $1}')"
+		else	retval="$(echo $retval|awk '{print $2}')"
+		fi
+		retval="${retval:8}"
+		if [ ! "" = "$retval" ]
+		then	# Must be 1
+			[ $retval -eq 1 ] && echo "Enabled" || echo "Disabled"
+			[ $retval -eq 1 ] && return 0 || return 1
+		else	echo "Error"
+			return 99
+		fi
+	}
+	Repo_Toggle() { # [ REPONAME ]
+	#
+	#
+		if [ "" = "$1" ]
+		then	repo=$(Repo_Select)
+		else	if [ -f "$dir_repo/$1" ]
+			then	repo="$1"
+			else	repo="$1.repo"
+			fi
+		fi
+		status=$(Repo_isEnabled $repo)
+		case $status in
+		"Enabled")	sed s/'# enabled'/'enabled'/g -i $dir_repo/$repo
+				sed s/'enabled=1'/'enabled=0'/g -i $dir_repo/$repo
+				sT "Disabled $repo"
+				sE "Disabled: $repo"	;;
+		"Disabled")	sed s/'enabled=0'/'enabled=1'/g -i $dir_repo/$repo
+				sT "Enabled $repo"
+				sE "Enabled: $repo"	;;
+		esac
+	}

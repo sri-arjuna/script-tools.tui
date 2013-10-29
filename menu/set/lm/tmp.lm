@@ -1,0 +1,25 @@
+#!/bin/bash
+deskFile=$(ls /etc/sysconfig|grep desktop)
+test "" = "$deskFile" && deskFile=/etc/sysconfig/desktop
+
+# | Subs
+lm_inst() { # lxde|gdm|slim
+#
+#
+	lmselection=""
+	lms=$stDir/scripts/set/lm
+	tmps=$(ls $lms) 
+
+	case $1 in
+	"")	for t in $tmps; do test -d $lms/$t && lmselection="$lmselection $t";done
+		select newLM in $lmselection;do break;done ;;
+	else)	newLM=$1	;;
+	esac
+	sInst $newLM
+}
+
+
+
+mnuA="Install a LM"
+mnuB="Set LM and session defaults"
+#lm_inst

@@ -1,0 +1,112 @@
+#!/bin/bash
+#
+#	Desription:	
+#	Lisence:        GPL v3
+#	Author:         sea ; < erat DOT simon æ gmail D0T com >
+#	Created:	2013.07.26
+#	Changed:	2013.07.26
+	script_version=0.1
+#
+#	Title
+#
+	title="sea's GDM random background"
+	sT "$title ($script_version)"
+#	
+#	Variables
+#
+	GDM_RNDBACKGROUND_DIR=""
+	GDM_SELECT_FROM=""
+	script_exe="$SEA_CFG_DIR/cronjobs/gdm-bg"
+	tmpfile="$SEA_CACHE_DIR/cronjob"
+	newDir=""
+	retval=99
+	needHelp=false
+	thisConfig=module.set.lm.gdm.rndbg
+	tpath=/usr/share/backgrounds
+	cd $tpath;relname="$(ls --hide=gnome --hide=images --hide=tiles --hide=default.png)"
+	cd "$OLDPWD"
+	thisHelp="rndbg ($script_version)
+		\rỤsage: st set lm gdm rndbg [BASEPATH]
+		\r\t-h\t\tDisplays this screen
+		\r\t-c\t\tOpens the config file in your favorite editor
+		\r\tBASEPATH\tWhere BASEPATH is anything like one of these:
+		\r\t\t * $HOME/.backgrounds
+		\r\t\t * $tpath
+		\r\t\t * $tpath/$relname
+		"
+#
+#	Check for argument
+#
+	if [ ! -z $5 ]; then
+		case "$5" in
+		-\?|--\?|-h|-help|--h|--help)
+			needHelp=true
+			;;
+		-c)	sEdit "$SEA_LIB_DIR/$thisConfig"
+			press
+			source "$SEA_LIB_DIR/$thisConfig"
+			[ "" = "$(echo $GDM_RNDBACKGROUND_DIR)" ] && return
+			;;
+		esac
+	fi
+	[ -d "$5" ] && newDir="$5" && \
+		ReportStatus 0 "Provided argument: $5"
+#
+#	Write default config file or source it
+#
+	if [ -f "$SEA_LIB_DIR/$thisConfig" ] && [ -z $4 ]
+	then	source "$SEA_LIB_DIR/$thisConfig"
+		ReportStatus $? "Configuration loaded"
+		newDir="$GDM_RNDBACKGROUND_DIR"
+	elif [ ! -f "$SEA_LIB_DIR/$thisConfig" ]
+	then	if ask "Create a default option?"
+		then	[ "" =  "$newDir" ] && \
+				newDir=$(input "What is your prefered default login manager? ")
+			echo -e "GDM_RNDBACKGROUND_DIR=\"$newDir\"
+			\rGDM_SELECT_FROM=\"$XDG_PICTURES_DIR $tpath '$tpath/$relname'\"" > "$SEA_LIB_DIR/$thisConfig"
+			ReportStatus $? "Configuration saved"
+		else	echo -e "GDM_RNDBACKGROUND_DIR=\"$newDir\"\n
+			\rGDM_SELECT_FROM=\"$XDG_PICTURES_DIR $tpath '$tpath/$relname' \"" > "$SEA_LIB_DIR/$thisConfig"
+			ReportStatus $? "Written empty default"
+		fi
+	fi
+	[ "" = "$GDM_SELECT_FROM" ] && GDM_SELECT_FROM="$XDG_PICTURES_DIR $tpath"
+#	
+#	Subs
+#
+	write_gdm_rndbg_cronjob() { # NEWPATH
+	# Saves NEWPATH to $SEA_CFG_DIR/cronjobs/gdm-bg,
+	# $SEA_LIB_DIR/module.set.lm.gdm.rndbg and 
+		source $stDir/st.cfg
+		sE "Select intervall:"
+		select intervall in hourly daily weekly monthly;do break;done
+		script_text="#!/bin/bash
+				\r# Script created using Script-Tools ($stVer)
+				\rstDir=/usr/share/script-tools
+				\rsource $stDir/st.cfg
+				\rimg=$(GetRandomFile \"$1\")
+				\r$stDir/st set lm gdm bg \"$img\"
+				"
+
+		echo -e "$script_text" > "$script_exe"
+		chmod +x "$script_exe"
+		
+		CRON_Save
+		sudo crontab -l > "$tmpfile"
+		echo "@$intervall $script_exe" >> "$tmpfile"
+		sudo crontab "$tmpfile"
+		CRON_List
+		
+	}
+#
+#	Handle Arguments
+#
+	#[ -z "$1" ] && echo -e "$thisHelp" && exit $retval
+	[ $needHelp = true ] && echo -e "$thisHelp" && exit $retval
+#	
+#	Display
+#
+	[ "" =  "$newDir" ] && \
+		sE "Please select the directory that contains the images to be used at random:" && \
+		select newDir in $GDM_SELECT_FROM;do break;done
+	

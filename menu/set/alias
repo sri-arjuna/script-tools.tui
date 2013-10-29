@@ -1,0 +1,30 @@
+#!/bin/bash
+script_version=0.1
+sT "sea's Alias adder"
+test ! 0 = $EUID && \
+	sE "Script needs to be run as root." && \
+	if ask "Reload it as root?"
+	then	su -c "st set alias"
+	else	return 1
+	fi
+
+
+export aliasDir=$SEA_LIST_DIR/alias
+
+AddAliases() { # NAME
+# Add the given and existing name of an alias file to your system
+# Will be placed at : /etc/profile.d/alias-NAME.sh
+	test "" = "$1" && sE "Requires at least 1 argument."
+	export targetfile=/etc/profile.d/alias-$1.sh
+	cat $aliasDir/$1 >> $HOME/bashrc
+}
+
+sE "Please select the Alias-List you want to add:"
+select mnuAlias in Back $(ls $aliasDir)
+do	test Back = "$mnuAlias" && break
+	cat $aliasDir/$mnuAlias
+	if ask "Add $mnuAlias"
+	then	AddAliases $mnuAlias
+	fi
+done
+	

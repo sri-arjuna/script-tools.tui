@@ -1,0 +1,50 @@
+#!/bin/bash
+# ------------------------------------------------------------------------------
+# | sea's Script Tools: The 3rd Generation
+# | File Description:	Menu to setup your system
+    script_version=0.3
+# | Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+# | Created (y.m.d):    2012.05.10
+# | Changed:            2013.05.04
+# | License:            GPL v3
+# | Modified By:        
+# | Resource:           
+# | Special Thanks:     
+# ------------------------------------------------------------------------------
+# | Title
+    sT "sea Script Tools: Setup minimal system $script_version"
+# |
+# | Variables
+    usrs="Add users that exist in /home"
+    pkgs="Install a complete OS using the list files ($stDir/Configuration_Lists/inst)"
+    stage="Boot to stage X (TODO)"
+    lgmgr="Login Manager"
+# |
+# | One Liners
+    
+# |
+# | Subs
+    
+# |
+# | Display
+    while read line; do sE "$line" ; done < $SEA_CLI_DIR/set/default.info
+    
+    if [ "" = "$3" ]
+    then	select mnu in back "$usrs" "$lgmgr" "$pkgs" "$stage"
+			do	case "$mnu" in
+		   			back) 		break	;;
+		   			"$usrs")	source $SEA_CLI_DIR/set/users	;;
+		   			"$pkgs")	source $SEA_CLI_DIR/set/pkgs	;;
+		   			"$stage")	source $SEA_CLI_DIR/set/stage	;;
+					"$lgmgr")	sMenu $SEA_CLI_DIR/set/lm	;;
+		   		esac
+			done
+	else	case $3 in
+				a|all|auto)		for a in $(ls $SEA_CLI_DIR/set)
+								do	test -f $a && source $a
+								done
+								;;
+				else)			sE "Usage: $sst set"
+								sE "   or: $sst set a|all|auto"
+			esac
+	fi

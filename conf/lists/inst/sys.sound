@@ -1,0 +1,7 @@
+alsa-firmware
+alsa-lib
+pulseaudio
+pulseaudio-libs
+pulseaudio-libs-glib2
+pulseaudio-module-gconf
+pulseaudio-module-x11

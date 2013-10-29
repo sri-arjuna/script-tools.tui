@@ -1,0 +1,125 @@
+
+# ------------------------------------------------------------------------------
+#	sea's Script Tools: The 3rd Generation
+#	File Description:	
+#	File Version:       0.6
+#	Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created (y.m.d):    2012.04.10
+#	Changed:            2013.05.29
+#	License:            GPL v3
+#	Modified By:        
+#	Resource:           
+#	Special Thanks:     
+# ------------------------------------------------------------------------------
+#	Title
+    
+#
+#	Variables
+    
+#
+#	One Liners
+    
+#
+#	Subs
+	is64bit() { #
+	# Returns true (0), if it is 64 bit
+	# Returns false (1) otherwise
+		if [ "x86_64" = "$(uname -m)" ]
+		then	return 0
+		else	return 1
+		fi
+	}
+	isConsole() { #
+	# Compares $TERM with xterm, if it matches returns 1, 0 otherwise
+	# 
+		if [ "${TERM:5}" = "xterm" ]
+		then    return 1
+		else    return 0
+		fi
+	}
+	isEvenNr() { # #NUMBER
+	# Make passed argument an even string
+	# by adding a spacechar at the end
+		check=$[ $1 / 2 ]
+		if [ $1 = $[ $check * 2 ] ]
+		then	echo "$num"
+			return 0
+		else	echo "$[ $num + 1 ]"
+			return 1
+		fi
+	}
+	isRoot() { # Returns 0 if the function was called with root access, 1 otherwise.
+	# Checks the \$UID
+	#
+		if [ $USER = root ] || [ $UID -eq 0 ]
+		then    return 0
+		else    return 1
+		fi
+	}
+	isHelpy() { # ARGUMENT
+	# Compares argument with a list of possbible help requests
+	# Returns 0 if one is found, 1 otherwise
+		test "" = "$1" && sE "Usage: isHelpy ARGUMENT" && return 1
+		helpvars="help -h --h -? --? h ? -help --help"
+		for hv in $helpvars
+		do	if [ "$hv" = "$1" ]
+			then	return 0
+			fi
+		done
+		return 1
+	}
+	unalias ask
+	ask() { # "y/n Question"
+	# Return 0 if answer starts with first letter of: yes, oui, ja, si
+	# Return 1 otherwise
+		read -n1 -p "${BORDER_LEFT} $1 (y/n)" answer 
+		sE "$1 (y/n)" "$answer"
+		case $answer in
+		    y|o|j|s|Y|O|J|S)
+		    		# First letter of the meaning "yes" in these languages:
+				# English, Français, Deutsch, Italiano
+				return 0    ;;
+		    *)          return 1    ;;
+		esac
+	}
+	isInstalled() { # EXENAME
+	# Returns 0 if EXENAME was found either in $(which EXENAME)
+	# or by distro specific package manager, 1 otherwise, 99 if not handled yet
+		sP "Checking for: $1" "$PROGRESS"
+		retval=1
+		checkVAR=$(which "$1") >> /dev/zero
+		if [ "" = "$checkVAR" ]
+		then	# Then application was not found in $PATH
+			if isRedhatbased
+			then	[ ! "" = "$(rpm -qa $1|grep not)" ] && retval=0| retval=1
+				#ReportStatus "$retval" "Looking for $requires"
+				return $retval
+			else	sE "isBased returns:" "$(isBased)"
+				[ -f /etc/system-release ] && sE "/etc/system-release" "$(echo $(cat /etc/system-release))"
+				return 99
+			fi
+		else	ReportStatus 0 "Found: $1"
+			return 0
+		fi
+		sE "Cant work with expected EXENAME: \"$1\"'" "$FAILURE"
+		return 99
+	}
+	isNum() { # STRING
+	# Returns 0 if STRING is numeric only
+	# 1 otherwise
+		checkval=$(echo $1|grep -v [a-zA-Z])
+		test "$checkval" = "$1" &&  return 0| return 1
+	}
+	isAlpha() { # STRING
+	# Returns 0 if STRING is letters only
+	# 1 otherwise
+		checkval=$(echo $1|grep [a-zA-Z] )
+		test "$checkval" = "$1" &&  return 0| return 1
+	}
+	isinSudoers() { #
+	# Returns 0 if user is in /etc/suders
+	# Returns 1 if user is not found in /etc/sudoers
+		[ root = $USER ] && return 0
+		[ ! "" = "$(sudo grep $USER /etc/sudoers)" ] && return 0
+		return 1
+	}

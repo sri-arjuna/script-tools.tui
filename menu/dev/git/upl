@@ -1,0 +1,46 @@
+#!/bin/bash
+#
+#	Desription:	Handles GIT Commands - Upload
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea) ; < < erat . simon @ gmail . com >
+#	Created:	2013.08.25
+#	Changed:	2013.08.26
+	script_version=0.3
+#
+#	Title
+#
+	title="sea's GIT Handler - Upload"
+	sT "$title ($script_version)"
+#
+#	Variables
+#
+	lbl=""
+	removeBranch=""
+	args=( $(echo "$4" "$5" "$6" "$7" "$8" ))
+	for arg in "${args[@]}" ;do
+		[ ! "$SEA_DEV_DIR/" = "$SEA_DEV_DIR/$arg" ] && \
+			[ -d "$SEA_DEV_DIR/$arg" ] && \
+			lbl="$arg"
+		[ "-h" = "$arg" ] && \
+			echo -e "add ($script_version)
+				\rUsage: st dev prj git upl [LABEL]
+				\rUploads code from project LABEL.
+				\r" && return 99
+		[ ! "" = "$lbl" ] && \
+			[ ! "$arg" = "$lbl" ] && \
+			[ ! "" = "$(GIT_Branch_List $lbl|grep $arg)" ] && \
+			removeBranch="$arg"
+	done
+#
+#	Display
+#
+	[ -z $lbl ] && \
+		sE "Please select a project to upload:" && \
+		select lbl in $(PRJ_Select);do break;done
+	source "$SEA_DEV_DIR/$lbl/conf"
+	current=$(GIT_Branch_List "$lbl"|awk '{print $1}')
+	sE "Selected project:" "$prj_name"
+	sE "Current branch:" "$current"
+	GIT_Req_Commit "$lbl" && GIT_Commit "$lbl" -u
+	GIT_Upload "$lbl" > /dev/zero #"$removeBranch"
+	ReportStatus $? "Uploaded code from $prj_name"

@@ -1,0 +1,5 @@
+[script-tools]
+name=Script-tools
+baseurl=https://sourceforge.net/projects/script-tools/files/repo
+enabled=1
+gpgcheck=0

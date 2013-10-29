@@ -1,0 +1,31 @@
+#!/bin/bash
+#
+#	Desription:	Edit rpm spec
+#	Lisence:        GPL v3
+#	Author:         Simon A. Erat (sea), erat.simon æ gmail.com
+#	Release Date:   2012.11.16
+#	Changed Date:	2013.08.28
+	script_version=0.5
+#
+#	Title
+#
+	title="sea's RPM Handler - Edit spec"
+	sT "$title ($script_version)"
+#
+#	Variables
+#
+	lbl=""
+#
+#	Display
+#
+	[ ! -z $4 ] && \
+		[ -f "$SEA_DEV_DIR/$4/conf" ] && \
+		lbl="$4"
+	[ "" = "$lbl" ] && \
+		sP "Please select a LABEL to use:" && \
+		lbl=$(PRJ_Select) && \
+		sE "Selected $lbl" "$DONE"
+	source "$SEA_DEV_DIR/$lbl/rpm"
+	source "$SEA_DEV_DIR/$lbl/conf"
+	sEdit "$rpm_spec_file"
+	ReportStatus $? "Edited $prj_name rpm spec"

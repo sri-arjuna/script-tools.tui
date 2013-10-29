@@ -1,0 +1,52 @@
+#!/bin/bash
+#
+#	Changes GRUB2 GFX Payload changer
+#
+#
+#	License:        GPL v3
+#	Author:         Simon A. Erat (sea)
+#	Release Date:   2012.06.04
+#	Changed Date:	2013.06.15
+	script_version=0.6
+#
+#	Title
+#
+	sT "sea's GRUB2 GFX Payload changer ($script_version)"
+	[ ! isRoot ] && sE "Requires root access!" "$WARN" && return 1
+#
+#	Font settings / Variables
+#
+	
+	grubdir=/boot/grub2
+	grubfile=/etc/default/grub
+	tmpfile=/tmp/grub
+	line="$(grep GRUB_GFXPAYLOAD_LINUX $grubfile)"
+	current=$(echo "$line"|sed s/"="/" "/g|sed s/\"/' '/g|awk '{print $2" "$3}')
+	case "${line:0:1}" in
+	"#")	current=disabled	;;
+	"")	current=none	;;
+	esac
+#
+#	Action
+#
+	sE "The current GFX Payload is:" "$current"
+	if ask "Do you want to change it?"
+	then	sE "Please select the GFXPAYLOAD_LINUX:"
+		select gfx in Back $gfxmodes keep rhgb quiet "keep rhgb" "keep quiet" "rhgb quiet"
+		do	[ Back = "$gfx" ] && sE "" "$BACK" && break
+		
+			repl="$(grep GRUB_GFXPAYLOAD_L $grubfile)"
+			if [ "" = "$(echo $repl)" ]
+			then	echo "GRUB_GFXPAYLOAD_LINUX=\"$gfx\"" >> $grubfile
+			else	sed s/"$repl"/"GRUB_GFXPAYLOAD_LINUX=\"$gfx\""/g -i $grubfile
+			fi
+			if [ $? -eq 0 ] 
+			then	sE
+				ask "Rebuild GRUB2?" && \
+				grub2-mkconfig -o /boot/grub2/grub.cfg > /dev/zero
+			fi
+			break
+		done
+	else	sE "" "$BACK"
+		return 0
+	fi

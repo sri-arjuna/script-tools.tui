@@ -1,0 +1,9 @@
+alias y=yum
+alias yi="sudo yum install"
+alias yr="sudo yum remove"
+alias yiy="sudo yum install -y"
+alias yli="yum list installed"
+alias yp="yum provides"
+alias ys="yum search"
+alias yl="yum list"
+alias yq="yum info"

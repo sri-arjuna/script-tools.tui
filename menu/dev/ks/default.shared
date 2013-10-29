@@ -1,0 +1,20 @@
+#!/bin/bash
+#
+#	Description:	Handles basic kickstart tasks
+#	License: 	GPL v3
+#	Date created:	2013.08.03
+#	Date changed:	2013.08.28
+#	Written by: 	Simon A. Erat, erat . simon æ gmail . com
+	script_version=0.2
+#
+#	Variables
+#
+	lbl=""
+#
+#	Action
+#
+	for after in "$4" "$5" "$6";do
+		[ "-h" = "$after" ] && needHelp=true
+		[ -d "$SEA_DEV_DIR/$after" ] && lbl="$after"
+	done
+	[ ! -z $4 ] && [ $needHelp = false ] && lbl="$4"

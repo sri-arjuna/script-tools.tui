@@ -1,0 +1,60 @@
+#!/bin/bash
+#
+#
+#
+#
+#
+#	Lisence:	GPL v3
+#	Description:	Imports gpg key for Fedora
+#	E-Mail:  	erat.simon@gmail.com	
+#	Date created:	2012.10.27
+#	Date changed:	2012.10.27
+#
+	script_version=0.2
+#
+#	Title
+#
+	sT "GPG Key import handler for Fedora ($script_version)"
+#
+#	Variables
+#
+	menuoptions="15 16 17 18"
+	args="$3 $4 $5"
+	release=""
+	for a in $args;do
+	tmp=$(echo $menuoptions|grep $a)
+	test ! "" = "$tmp" && release=$a
+	done
+#
+#	Subs
+#
+	fedora2keypath() { # RELEASEVER
+	#
+	#
+		out=""
+		test "" = "$1" && sE "Usage: fedora2keypath 15|16|17|18" && return 1
+		case $1 in
+		15)	key="069C8460"	;;
+		16)	key="A82BA4B7"	;;
+		17)	key="1ACA3465"	;;
+		18)	key="DE7F38BD"	;;
+		esac
+		out="https://fedoraproject.org/static/$key.txt"
+		echo "$out"
+	}
+#
+#	Menu
+#
+	if [ "" = "$release" ]
+	then	rel=$(cat /etc/system-release|awk '{print $3}')
+		if ask "Is $rel the release you want to import?"
+		then	release=$rel
+		else	sE "Please select your release:"
+			select release in $menuoptions;do break;done
+		fi
+	fi
+	
+	rpm --import $(fedora2keypath $release) && retval=0 || retval=1
+	test 0 -eq $retval && \
+		sE "Successfully imported F$release keys" "$SUCCESS" || \
+		sE "Could not import F$release keys" "$FAILURE"

@@ -1,0 +1,74 @@
+
+# ------------------------------------------------------------------------------
+#	sea's Script Tools: The 3rd Generation
+#	File Description:	Aims to handle sever distro related things.
+#	File Version:       0.2
+#	Author:             Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Created (y.m.d):    2012.04.10
+#	Changed:            2012.08.03
+#	License:            GPL v3
+#	Modified By:        
+#	Resource:           
+#	Special Thanks:     
+# ------------------------------------------------------------------------------
+#
+#	Subs
+#
+	isRedhatbased() { # 
+	# Simply checks if file /etc/redhat-release exists and is not empty
+	# Returns 0 for CentOS, Fedora, RedHat, Scientific Linux, 1 otherwise
+		retval=1
+		[ ! "" = "$(cat /etc/redhat-release)" ] && retval=0
+		return $retval
+	}
+	isArchbased() { # Returns 0 for Arch Linux, 1 otherwise
+	# Simply checks if file /etc/arch-release exists
+	#
+		retval=1
+		[ ! "" =  "$(cat /etc/arch-release)" ] && retval=0
+		return $retval
+	}
+	isDebianbased() { # Returns 0 for Debian, 1 otherwise
+	# Simply checks if file /etc/debian_version exists
+	#
+		retval=1
+		[ ! "" = "$(cat /etc/debian_version)" ] && retval=0
+	    	return $retval
+	}
+	isBased() { #
+	# Returns arch, debian, redhat or unkown
+	#
+    		retval=unknown
+		test isArchbased && retval=arch
+		test isDebianbased && retavl=debian
+		test isRedhatbased && retval=redhat
+		echo $retval
+		test ! "unkown" = "$retval" && return 0 || return 1
+	}
+	distro() { #
+	# Should print Distroname and kernel. 
+	#
+        #
+        #	Variables
+		e=/etc
+		SF="release version"    # Search For
+        #
+        #	One Liners
+		results=$(for a in $SF;do ls $e|grep $a;done)
+		resultsFiles=$(for each in $results;do test -f $e/$each && echo $each;done)
+            
+        #
+        #	Subs
+            
+        #
+        #	Display
+		for each in $resultsFiles
+		do      tmp=$(cat $e/$each)
+			if [[ ! "cpe" = "${tmp:0:3}" ]]
+			then    strcat=$(cat $e/$each)
+			    	[[ ! "" = "$strcat" ]] && output="$strcat"
+			fi
+		done
+		echo "$(echo $strcat|awk {'printf $1'}) $(uname -r)"
+	}
+	distro=$(distro)

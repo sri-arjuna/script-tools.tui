@@ -1,0 +1,113 @@
+#!/bin/bash
+#
+#	sea's Script Tools: The 3rd Generation
+#
+#	Description:	
+#			
+	script_version=0.1
+#	License:	GPL v3
+#	Created:	2013.05.05
+#	Changed:	2013.05.16
+#	Author: 	Simon A. Erat (sea) <erat.simon AT gmail.com>
+#	Resource:	http://www.ibiblio.org/oswg/oswg-nightly/oswg/en_US.ISO_8859-1/articles/gdm-reference/gdm-reference/x135.html
+#			https://wiki.archlinux.org/index.php/KDM
+#			http://www.tldp.org/HOWTO/XDM-Xterm/config.html
+#			https://wiki.archlinux.org/index.php/LightDM
+#			
+#			
+#			
+# 
+#	Script tools compatibility
+#
+	if [ ! -f /usr/share/script-tools/st.cfg ]
+	then	clear ; clear
+		alias sT="echo -e '\n\n\t\t'"
+		alias sP="printf '\r'"
+		alias sE="echo"
+		SUCCESS="[ DONE ]"
+		FAILURE="[ FAIL ]"
+		PROGRESS="[ WORK ]"
+		ReportStatus() { [ $1 -eq 0 ] && echo "$SUCCESS  $2" ; [ $1 -eq 1 ] && echo "$FAILURE  $2" ; [ $1 -eq 3 ] && sP "$PROGRESS  $2" ; return $1 ; }
+	else	[ -z $stDir ] && source /usr/share/script-tools/st.cfg
+	fi
+#
+#	Title
+#
+	thistitle=" sea's Troubleshoot Login no DE"
+	sT "$thistitle ($script_version)"
+#	
+#	Variables
+#
+	retval=99
+	needHelp=false
+	thisHelp="$(basename $0) ($script_version)
+		\rỤsage: $0 [-h] [-xy] /path/to/file [file2]
+		\r\t-h\tDisplays this screen
+		\r\t-XY\tDESCRIPTION
+		\rReturns (from the last displayed):
+		\r\t0 \tOK
+		\r\t1 \tBAD
+		\r\t99 \thelp screen\n"
+	lm_cfgs=( '/etc/gdm/gdm.conf' '/etc/lxdm/lxdm.conf' '/etc/slim.conf' '/usr/share/config/kdm/kdmrc' '/etc/X11/xdm' '/etc/lightdm/lightdm.conf')
+	found=""
+#
+#	Check for argument
+#
+	if [ ! -z "$1" ]; then
+		for arg in $@;do
+			case ${arg:0:2} in
+			ht)		url="$arg"	;;
+			[-]a)		mode="var"	;;
+			# Diffrent help options
+			[-]h[elp])	needHelp=true	;;
+			[-]?)		needHelp=true	;;
+			esac
+		done
+	fi
+#	
+#	Show Help and Exit?
+#
+	[ ! 0 -eq $UID ] && sE "This script requires root rights." "$FAILURE" && exit 1
+	[ $needHelp = true ] && echo -e "$thisHelp" && exit $retval
+	#[ -z "$1" ] && echo -e "$thisHelp" && exit $retval
+#	
+#	Subs
+#
+	
+#
+#	Execute Arguments
+#
+	
+#	
+#	Display
+#
+	tfile=/etc/sysconfig/desktop 
+	[ -f "$tfile" ] && \
+		sT "Oldschool: $tfile" && \
+		cat "$tfile"
+	
+	sT "Checking for login manager configurations"
+	for lm in ${lm_cfgs[@]}
+	do	msg="Check for $lm"
+		sP "$msg" "$PROGRESS"
+		[ -f "$lm" ] && found="$found $lm" && retval=$? || retval=1
+		ReportStatus  $retval "$msg"
+	done
+	
+	sT " Looking for session settings in:"
+	for this in ${found}
+	do	sE "$this" "$(grep session= $this)"
+	done
+	
+	tfile=/var/log/Xorg.0.log 
+	[ ! -f "$tfile" ] && tfile="$tfile.old"
+	if [ -f "$tfile" ] 
+	then	sT " Xorg Server log in $tfile"
+		cat "$tfile" | grep -i vid
+		cat "$tfile" | grep -i vga
+	fi
+	
+	sT "dmesg"
+	dmesg | grep -i vid
+	dmesg | grep -i vga
+	dmesg|tail

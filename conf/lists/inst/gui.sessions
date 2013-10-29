@@ -1,0 +1,7 @@
+pinentry-gtk
+dconf
+dconf-editor
+GConf2
+GConf2-editor
+dbus
+dbus-x11

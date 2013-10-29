@@ -1,0 +1,26 @@
+#!/bin/bash
+#
+#	Folder Handler
+#
+	#[ -z $stDir ] && source /usr/share/script-tools/st.cfg
+	if [ -d /boot/grub2 ]
+	then	# Grub 2 installed ?
+		thisPath="$SEA_CLI_DIR/tweak/grub/2"
+	else	thisPath="$SEA_CLI_DIR/tweak/grub/1"
+	fi
+#
+#	Need Help?
+#
+	needHelp=false
+	for arg in ${args[@]};do [ "$arg" = "-h" ] && needHelp=true && break ;done
+	if [ true = $needHelp ] 
+	then	echo -e "\n\n\n\t\tNEED\tHELP\n\n\n"
+		[ -f "$thisPath/default.help" ] && cat "$thisPath/default.help"
+		[ -f "$thisPath/default.grub" ] && source "$thisPath/default.grub" -h
+		exit
+	else	sMenu "$thisPath"
+	fi
+#
+#	Go menu
+#
+	
