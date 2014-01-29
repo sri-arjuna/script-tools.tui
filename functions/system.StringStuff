@@ -72,7 +72,7 @@
 				echo $usr && return 0
 		done
 	}
-	unalias input
+	unset input
 	input() { # QUESTION
 	# Asks the user a question and returns the answer
 	# Its a simple wrapper for read

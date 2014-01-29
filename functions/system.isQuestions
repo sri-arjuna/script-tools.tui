@@ -59,7 +59,7 @@
 	isHelpy() { # ARGUMENT
 	# Compares argument with a list of possbible help requests
 	# Returns 0 if one is found, 1 otherwise
-		test "" = "$1" && sE "Usage: isHelpy ARGUMENT" && return 1
+		test "" = "$1" && tui-echo "Usage: isHelpy ARGUMENT" && return 1
 		helpvars="help -h --h -? --? h ? -help --help"
 		for hv in $helpvars
 		do	if [ "$hv" = "$1" ]
@@ -68,20 +68,20 @@
 		done
 		return 1
 	}
-	unalias ask
-	ask() { # "y/n Question"
+	#unset ask
+	#ask() { # "y/n Question"
 	# Return 0 if answer starts with first letter of: yes, oui, ja, si
 	# Return 1 otherwise
-		read -n1 -p "${BORDER_LEFT} $1 (y/n)" answer 
-		sE "$1 (y/n)" "$answer"
-		case $answer in
-		    y|o|j|s|Y|O|J|S)
-		    		# First letter of the meaning "yes" in these languages:
-				# English, Français, Deutsch, Italiano
-				return 0    ;;
-		    *)          return 1    ;;
-		esac
-	}
+	#	read -n1 -p "${BORDER_LEFT} $1 (y/n)" answer 
+	#	tui-echo "$1 (y/n)" "$answer"
+	#	case $answer in
+	#	    y|o|j|s|Y|O|J|S)
+	#	    		# First letter of the meaning "yes" in these languages:
+	#			# English, Français, Deutsch, Italiano
+	#			return 0    ;;
+	#	    *)          return 1    ;;
+	#	esac
+	#}
 	isInstalled() { # EXENAME
 	# Returns 0 if EXENAME was found either in $(which EXENAME)
 	# or by distro specific package manager, 1 otherwise, 99 if not handled yet
@@ -94,14 +94,14 @@
 			then	[ ! "" = "$(rpm -qa $1|grep not)" ] && retval=0| retval=1
 				#ReportStatus "$retval" "Looking for $requires"
 				return $retval
-			else	sE "isBased returns:" "$(isBased)"
-				[ -f /etc/system-release ] && sE "/etc/system-release" "$(echo $(cat /etc/system-release))"
+			else	tui-echo "isBased returns:" "$(isBased)"
+				[ -f /etc/system-release ] && tui-echo "/etc/system-release" "$(echo $(cat /etc/system-release))"
 				return 99
 			fi
 		else	ReportStatus 0 "Found: $1"
 			return 0
 		fi
-		sE "Cant work with expected EXENAME: \"$1\"'" "$FAILURE"
+		tui-echo "Cant work with expected EXENAME: \"$1\"'" "$FAILURE"
 		return 99
 	}
 	isNum() { # STRING

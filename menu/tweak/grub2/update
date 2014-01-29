@@ -1,3 +1,10 @@
-sT "Update GRUB2"
+#!/bin/bash
+tui-title "Update GRUB2"
 [ ! 0 -eq $UID ] && sE "Requires root access!" "FAIL" && return 1
-grub2-mkconfig -o /boot/grub2/grub.cfg
+
+current_distro=$(distro|awk '{print $1}')
+grub_efi=/boot/efi/EFI/${current_distro,,}/grub.cfg
+
+[ -f $grub_efi ] && OUTFILE=$grub_efi || OUTFILE=/boot/grub2/grub.cfg
+
+grub2-mkconfig -o $OUTFILE

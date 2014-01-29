@@ -12,7 +12,7 @@
 #
 #	Title
 #
-	sT "Signature Generator ($script_version)"
+	tui-title "Signature Generator ($script_version)"
 #
 #	Variables
 #
@@ -52,13 +52,13 @@
 		esac
 	done
 	[ $needHelp = true ] && echo -e "$thisHelp" && exit $retval
-	[ ! 0 -eq $UID ] && sE "This script requires sudo access." "$INFO" #&& exit 1
+	[ ! 0 -eq $UID ] && tui-echo "This script requires sudo access." "$INFO" #&& exit 1
 #
 #	Subs
 #
 	if [ $noBB = false ] ; then
-		sE "Please select a color for the labels:" " " && LabelColor
-		sE "Please select a color for the values:" " " && ValueColor
+		tui-echo "Please select a color for the labels:" " " && LabelColor
+		tui-echo "Please select a color for the values:" " " && ValueColor
 	fi
 #
 #	Display
@@ -104,15 +104,15 @@
 	showThis="$sigDevice, $sigCPU, RAM: $sigRAM, OS: $sigDistro, DE: $sigDE"
 
 	if [ $noBB = false ] ; then
-		sE 
-		sT "Your BB signature code is:" 
+		tui-echo 
+		tui-title "Your BB signature code is:" 
 		echo "$showThisBB"
-		sE
+		tui-echo
 	fi
-	sT "Your signature is: long"
-	sE "$showThis"
-	sE
-	sT "Your signature is: fluent"
-	sE "$sigDistro with $sigDE on a $(Capitalize $sigDevName) $sigDevProd with $sigCPUCores cores at $sigCPUSpeed Mhz and $sigRAMamount of ram."
-	sE
+	tui-title "Your signature is: long"
+	tui-echo "$showThis"
+	tui-echo
+	tui-title "Your signature is: fluent"
+	tui-echo "$sigDistro with $sigDE on a $(Capitalize $sigDevName) $sigDevProd with $sigCPUCores cores at $sigCPUSpeed Mhz and $sigRAMamount of ram."
+	tui-echo
 	return $retval

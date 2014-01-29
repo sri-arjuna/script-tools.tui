@@ -2,8 +2,7 @@ parseargs() { #
 # Sourcing scripts or showing menu for given args.
 # 
 	toParse=($@)
-	home="$ST_MENU_DIR"
-	subDir=""
+	subDir="$ST_MENU_DIR"
 	
 	# Parse for special commands!
 	case "$1" in
@@ -17,21 +16,21 @@ parseargs() { #
 	
 	# Get sub-folder
 	for ARG in "${toParse[@]}";do
-		if [[ -d "$home/$subDir/$ARG" ]]
+		if [[ -d "/$subDir/$ARG" ]]
 		then	subDir+="/$ARG"
 		else	break
 		fi
 	done
 	
-	if [[ -f "$home$subDir/$ARG" ]]
+	if [[ -f "$subDir/$ARG" ]]
 	then	sH
-		source "$home$subDir/$ARG"
-	elif [[ -f "$home$subDir/$(basename $subDir).default" ]]
+		source "$subDir/$ARG"
+	elif [[ -f "$subDir/$(basename $subDir).default" ]]
 	then	sH
 		tui-echo "$subDir: . default"
-		source "$home$subDir/$ARG"
+		source "$subDir/$ARG"
 	else	sH
-		tui-echo "Could not parse further than $ARG"
+		#tui-echo "Could not parse further than $ARG"
 		sMenu "$subDir"
 	fi
 }
