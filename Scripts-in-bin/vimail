@@ -12,7 +12,7 @@
 #
 	[ "-h" = "$1" ] && echo "Come on its called: $0, what do you guess?" && exit 99
 	source /usr/share/script-tools/st.cfg
-	sT "View system mail for $(Evenize $USER) ($script_version) "
+	tui-title "View system mail for $(Evenize $USER) ($script_version) "
 #
 #	Variables
 #

@@ -30,10 +30,10 @@
 #	Display
 #
 	source /usr/share/script-tools/st.cfg > /dev/zero
-	sT "sea's Easy update ($script_version)"
+	tui-title "sea's Easy update ($script_version)"
 	thisDist=$(distro|awk '{print $1}')
 	case $1 in
-	"g")	sudo grub2-mkconfig -o /boot/grub2/grub.cfg
+	"g")	sudo st tweak grub2 update
 		exit ;;
 	"me")	case $(isBased) in
 		arch)	sudo pacman -Syu 			;;
@@ -44,7 +44,7 @@
 		;;
 	esac
 	
-	sE "What would you like to update? "
+	tui-echo "What would you like to update? "
 	select CASE in $thisDist grub2 end
 	do	case $CASE in
 		$thisDist)	case $(isBased) in
@@ -54,7 +54,7 @@
 				esac
 				break
 				;;
-		grub2)		sudo grub2-mkconfig -o /boot/grub2/grub.cfg ;;
+		grub2)		sudo st tweak grub2 update ;;
 		end)		break	;;
 		esac
 	done

@@ -30,7 +30,7 @@
 		
 		doLog=""
 		beMute=false
-		curlog="$SEA_CACHE_DIR/blame.$(date +'%y%m%d')"
+		curlog="$ST_CACHE_DIR/blame.$(date +'%y%m%d')"
 		
 		for arg in $@;do
 			case $arg in

@@ -12,7 +12,8 @@
 #
 #	Title
 #
-	sT "Mount all partitions ($script_version)"
+	tui-title "Mount all partitions ($script_version)"
+	press
 #
 #	Help
 #
@@ -24,7 +25,7 @@
 		\r\t-h\tThis screen
 		\r\t-u\tUnmounts all /mnt/[hs]d[a-z][1-99] mounts
 		\r" && exit 99
-	[ ! 0 -eq $UID ] && sE "Script requires root rights!" && exit 1
+	[ ! 0 -eq $UID ] && tui-echo "Script requires root rights!" && exit 1
 #
 #
 #	Variables

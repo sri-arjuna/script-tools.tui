@@ -11,7 +11,7 @@
 #	Title
 #
 	source /usr/share/script-tools/st.cfg
-	sT "Yum Resume, using yum-complete-transaction ($script_version)"
+	tui-title "Yum Resume, using yum-complete-transaction ($script_version)"
 #
 #	Help
 #

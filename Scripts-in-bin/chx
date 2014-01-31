@@ -8,10 +8,13 @@
 	script_version=0.2
 #
 #
-	[ "-h" = "$1" ] && \
-		echo -e "$0 ($script_version)
+	ME=$(basename $0)
+	if [ "-h" = "$1" ] || [ -z $1 ] 
+	then	echo -e "$ME ($script_version)
 		\rChangeMod +x for files available in . or \$PATH
+		\rUsage:\t$ME [/path/to/]FILE
 		\r" && exit 99
+	fi
 	F="$1"					# File to work with
 	FN="$(basename $1)"
 	list=$(echo $PATH|sed  s/':'/' '/g)	# Split up $PATH

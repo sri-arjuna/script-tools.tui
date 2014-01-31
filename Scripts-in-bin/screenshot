@@ -11,7 +11,8 @@
 #	Title
 #
 	source /usr/share/script-tools/st.cfg ; printf "\n"
-	sT "sea's lxscreenshot, using ImageMagick ($script_version)"
+	source $HOME/.config/user-dirs.dirs
+	tui-title "sea's lxscreenshot, using ImageMagick ($script_version)"
 #
 #	Variables
 #
