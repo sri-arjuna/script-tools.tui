@@ -5,10 +5,10 @@
 #	Pass an URL for a single video, or dont supply an URL
 #	and fill the list file.
 #			
-	script_version=0.7
+	script_version=0.8
 #	License:	GPL v3
 #	Created:	2012.12.07
-#	Changed:	2013.06.01
+#	Changed:	2014.02.01
 #	Author: 	Simon A. Erat (sea) ; < erat D0t simon æ gmail D0T com >
 #	Resource:	
 # 
@@ -18,13 +18,13 @@
 	if [ ! -f /usr/share/script-tools/st.cfg ]
 	then	clear ; clear
 		shopt -s expand_aliases
-		alias sT="echo -e '\n\n\t\t'"
+		alias tui-title="echo -e '\n\n\t\t'"
 		alias sP="printf '\r'"
-		alias sE="echo"
+		alias tui-echo="echo"
 		SUCCESS="[ DONE ]"
 		FAILURE="[ FAIL ]"
 		PROGRESS="[ WORK ]"
-		ReportStatus() { [ $1 -eq 0 ] && echo "$SUCCESS  $2" ; [ $1 -eq 1 ] && echo "$FAILURE  $2" ; [ $1 -eq 3 ] && sP "$PROGRESS  $2" ; return $1 ; }
+		tui-status() { [ $1 -eq 0 ] && echo "$SUCCESS  $2" ; [ $1 -eq 1 ] && echo "$FAILURE  $2" ; [ $1 -eq 3 ] && sP "$PROGRESS  $2" ; return $1 ; }
 		ask() { echo;read -n1 -p "$1 (y/n)" answer ; [ [yjs] = $answer ] && retval=0 || retval=1 ; printf "\n";return ; }
 		input() { echo;read -p "$1 " input ; echo "$input" ; }
 		press() { read -p "Press [enter] to continue..." buffer ; }
@@ -35,7 +35,7 @@
 #	Title
 #
 	thistitle="sea's Youtube download Script"
-	sT "$thistitle ($script_version)"
+	tui-title "$thistitle ($script_version)"
 #	
 #	Variables
 #
@@ -65,13 +65,14 @@
 #	Write default config file or source it
 #
 	thisConfig=module.youtube
-	if [ -f "$SEA_LIB_DIR/$thisConfig" ]
-	then	source "$SEA_LIB_DIR/$thisConfig"
-	else	temp_file="$SEA_CACHE_DIR/youtube-dl"
+	if [ -f "$ST_USER_CONF/$thisConfig" ]
+	then	source "$ST_USER_CONF/$thisConfig"
+	else	temp_file="$ST_CACHE_DIR/youtube-dl"
 		temp_dir="$XDG_DOWNLOAD_DIR/youtube"
 		format=webm
 		audio=vorbis
-		echo -e "temp_file=$temp_file\ntemp_dir=$temp_dir\nformat=$format\naudio=$audio" > "$SEA_LIB_DIR/$thisConfig"
+		echo -e "temp_file=$temp_file\ntemp_dir=\$XDG_DOWNLOAD_DIR/youtube\nformat=$format\naudio=$audio" > "$ST_USER_CONF/$thisConfig"
+		tui-echo "You can change the settings by editing:" "$ST_USER_CONF/$thisConfig"
 	fi
 	cmd_all="youtube-dl -c --console-title  --max-quality $format -o $temp_dir/%(title)s-%(id)s.%(ext)s"
 	cmd_audio="--extract-audio --audio-format  $audio"	# keep video file with: -k 
@@ -114,8 +115,8 @@
 	do isInstalled $app || requires="$requires $app";done
 	[ ! "" = "$(echo $requires)" ]  && \
 		sInst $requires && \
-		ReportStatus 1 "Installed $requires" || \
-		printf "\r$BORDER_LEFT Downloading..."
+		tui-status 1 "Installed $requires" || \
+		tui-printf "$BORDER_LEFT Downloading..."
 #	
 #	Subs
 #
@@ -160,36 +161,36 @@
 		do	# This checks each line if its a PL or single video
 			# And modifies arguments accoding to it.
 			if [ ! "" = "$(echo $line|grep PL)" ] 
-			then	sT "Downloading from playlist: $URL"
+			then	tui-title "Downloading from playlist: $URL"
 				cmd="$cmd_all $cmd_pl"
-			else	sT "Downloading $(youtube-dl --get-title $(yt_make_valid $line))"
+			else	tui-title "Downloading $(youtube-dl --get-title $(yt_make_valid $line))"
 				cmd="$cmd_pre"
 			fi
 			$cmd $(yt_make_valid "$line") ; retval=$?
 			if [ $retval -eq 0 ]
 			then	yt_remove_done "$line" 
-				ReportStatus $? "Downloaded & removed $line"
+				tui-status $? "Downloaded & removed $line"
 			else	failed[$C]="$line"
 				let C++
-				ReportStatus $? "Did not downloaded $line"
+				tui-status $? "Did not downloaded $line"
 			fi
 		done < "$temp_file"
 		
 		if [ ! "" = "${failed[*]}" ]
 		then	rm -f "$temp_file" ; touch "$temp_file"
 			for fail in ${failed[@]};do echo "$fail" >> "$temp_file";done
-			sE "These urls did fail:"
-			while read line;do ReportStatus 1 "* $line";done<"$temp_file"
-		else	ReportStatus 1 "Please provide videocodes or urls as argument or in the tempfile!"
+			tui-echo "These urls did fail:"
+			while read line;do tui-status 1 "* $line";done<"$temp_file"
+		else	tui-status 1 "Please provide videocodes or urls as argument or in the tempfile!"
 			echo -e "$thisHelp"
 			return 99
 		fi
 	else	if [ true = $playlist ]
-		then	sT "Downloading from playlist: $URL" 
+		then	tui-title "Downloading from playlist: $URL" 
 			cmd="$cmd_all $cmd_pl"
 		else	cmd="$cmd_pre"
 		fi
-		$cmd $(yt_make_valid "$URL") && rv=0 || rv=1
-		ReportStatus $rv "Downloaded $(youtube-dl --get-title $(yt_make_valid $URL))"
-		return $rv
+		$cmd $(yt_make_valid "$URL") #&& rv=0 || rv=1
+		tui-status $? "Downloaded $(youtube-dl --get-title $(yt_make_valid $URL))"
+		return $?
 	fi
