@@ -7,11 +7,49 @@ parseargs() { #
 	# Parse for special commands!
 	case "$1" in
 	[aA]bout)	sH
-			sT "Script-Tools ($stVer) by Simon Arjuna Erat (sea)"
+			tui-title "Script-Tools ($stVer) by Simon Arjuna Erat (sea)"
 			exit
-		;;
+			;;
 	"-h")		man st
-		;;
+			;;
+	help|readme|rm)	
+			sH $@
+			tui-echo "Displaying README, press CTRL+C or Q to quit." "$PROGRESS"
+			press
+			cat $ST_DOCS_DIR/README | less
+			exit $?
+			;;
+	cl|commandlist|cmdlist)
+			sH "Commands List"
+			tui-title "New executeables in bin"
+			ls $stDir/Scripts-in-bin --color=auto
+			tui-title "Command arguments to st"
+			printf "$BORDER_LEFT Generating list" #; sleep 2
+			var=""
+			for CMD in $(cd $ST_MENU_DIR;find|grep -iv '.in[f,tr]o'|grep -iv '.default'|grep -iv '.hide'|grep -iv '.title');do 
+				var+="\nst$(echo $CMD|sed s,'\.','',g|sed s,'\/',' ',g|sort)"
+				printf "."
+			done
+			printf "$var\n"
+
+			exit $?
+			;;
+	my)		if [ ! "" = $(ls "$ST_USER_SCRIPTS/") ]
+			then	sMenu "$ST_USER_SCRIPTS"
+			else	tui-echo "You have no custom scripts yet." "$INFO"
+				if ask "Create one now?"
+				then	select mode in MinimalHeader Exportable;do break;done
+					newName=$(input "Enter the scripts name: ")
+					case $mode in
+					MinimalHeader)	newScript $newName -m	;;
+					Exportable)	newScript $newName	;;
+					esac
+					sMenu $ST_USER_SCRIPTS
+				#else	ReportStatus 6 ""
+				fi
+			fi
+			exit $?
+			;;
 	esac
 	
 	# Get sub-folder

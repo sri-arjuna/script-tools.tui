@@ -80,6 +80,6 @@
 	if [[ ! -z $1 ]]
 	then	parseargs $@
 	else	sH "$@"
-		tui-title ""
+		tui-title "Welcome to sea's Script-Tools" #"$(cat $ST_MENU_DIR/default.title)"
 		sMenu "$ST_MENU_DIR"
 	fi
