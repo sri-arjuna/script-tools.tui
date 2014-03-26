@@ -352,15 +352,7 @@
 		done
 		printf "\n"
 	}
-	press() { # 
-	# Prints a line
-	# Ask the user to press enter to continue
-		#line="" ; echo -e "\r-------------------------"
-		#read -p   "Press [ENTER] to continue" nothing
-		msg="Press [ENTER] to continue"
-		sP "$msg" "$msg"
-		read nothing
-	}
+	
 	sInst() { # PACK AG ES
 	# Installs the PACKAGES, returns 0 for success, 1 otherwise
 	# Reckognizes: Arch Linux, All Debian & Red Hat based Linux

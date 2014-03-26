@@ -10,7 +10,7 @@
 #
 #	Title
 #
-	source /usr/share/script-tools/st.cfg ; printf "\n"
+	source /usr/share/script-tools/st.cfg ; printf "\r"
 	source $HOME/.config/user-dirs.dirs
 	tui-title "sea's lxscreenshot, using ImageMagick ($script_version)"
 #

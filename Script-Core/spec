@@ -1,22 +1,20 @@
 #!/bin/rpmspec
 Name:       script-tools
-Version:    0.8.7
-Release:    beta2%{?dist}
+Version:    0.9.0
+Release:    0%{?dist}
 Summary:    Diffrent tools written in BASH
 Group:      System Environment/Shells
 
 License:    GPLv3
 URL:        https://sourceforge.net/p/script-tools/
 #Source0:   http://downloads.sf.net/%{name}/%{name}-%{version}.tar.xz
-Source0:    http://sea.fedorapeople.org/%{name}/Review/%{name}/%{name}-%{version}.tar.gz
+Source0:    http://sea.fedorapeople.org/Review/%{name}/%{name}-%{version}.tar.gz
 
 BuildArch:  noarch
 
 # Really required:
-Requires:   curl
+Requires:   tui
 Requires:   bash
-Requires:   nano
-Requires:   wget
 Requires:   sudo
 
 # Recomended, but would supply install help
@@ -173,15 +171,16 @@ mkdir -p %{buildroot}/etc/yum.repos.d/ \
 #	check with sub package?
 #	since %{name}/UI_CLI/{fas,dev}
 # 	are seperate 
+# -- Its ok it works this way! :)
 #
 mv %{name}/* %{buildroot}%{_datarootdir}/%{name}
 rm -fr %{buildroot}%{_datarootdir}/%{name}/.git
-rm -f  %{buildroot}%{_datarootdir}/%{name}/UI_CLI/custom
-rm -fr %{buildroot}%{_datarootdir}/%{name}/UI_CLI/conf.org
-rm -fr %{buildroot}%{_datarootdir}/%{name}/UI_CLI/prj.todo
+#rm -f  %{buildroot}%{_datarootdir}/%{name}/UI_CLI/custom
+#rm -fr %{buildroot}%{_datarootdir}/%{name}/UI_CLI/conf.org
+#rm -fr %{buildroot}%{_datarootdir}/%{name}/UI_CLI/prj.todo
 ln -sf %{_datarootdir}/%{name}/st %{buildroot}%{_bindir}/st
-ln -sf %{_datarootdir}/%{name}/Script-FAS/script-tools-fas.sh %{buildroot}%{_sysconfdir}/profile.d/
-ln -sf %{_datarootdir}/%{name}/Script-Core/Templates/%{name}.desktop %{buildroot}%{_datarootdir}/applications/%{name}.desktop
+#ln -sf %{_datarootdir}/%{name}/Script-FAS/script-tools-fas.sh %{buildroot}%{_sysconfdir}/profile.d/
+#ln -sf %{_datarootdir}/%{name}/Script-Core/Templates/%{name}.desktop %{buildroot}%{_datarootdir}/applications/%{name}.desktop
 cp -pa %{_datarootdir}/%{name}/Scripts-in-bin/* %{buildroot}%{_bindir}/
 
 %clean
@@ -189,23 +188,17 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-%doc %{_datarootdir}/%{name}/Documentation
-%{_datarootdir}/applications/%{name}.desktop
+%doc %{_datarootdir}/%{name}/docs
+#%{_datarootdir}/applications/%{name}.desktop
 %{_datarootdir}/%{name}/st
 %{_datarootdir}/%{name}/st.cfg
-%{_datarootdir}/%{name}/Configuration_Variables
+%{_datarootdir}/%{name}/conf
 %{_datarootdir}/%{name}/Script-Core
-%{_datarootdir}/%{name}/Included_Functions
-%{_datarootdir}/%{name}/Configuration_Lists
+%{_datarootdir}/%{name}/functions
+%{_datarootdir}/%{name}/README.md
 %{_datarootdir}/%{name}/Scripts-in-bin
-%{_datarootdir}/%{name}/UI_CLI/conf   
-%{_datarootdir}/%{name}/UI_CLI/iso
-%{_datarootdir}/%{name}/UI_CLI/net
-%{_datarootdir}/%{name}/UI_CLI/set
-%{_datarootdir}/%{name}/UI_CLI/ts
-%{_datarootdir}/%{name}/UI_CLI/tweak
-%{_datarootdir}/%{name}/UI_CLI/default.info
-%{_datarootdir}/%{name}/UI_GUI
+%{_datarootdir}/%{name}/templates
+%{_datarootdir}/%{name}/menu
 # And register for uninstall the symlinks too:
 %{_bindir}/bash-colors
 %{_bindir}/blame
@@ -226,18 +219,19 @@ rm -rf %{buildroot}
 %{_bindir}/yumresume
 
 %files             prjdev
-%doc %{_datarootdir}/%{name}/Documentation
-%{_datarootdir}/%{name}/UI_CLI/dev
-%{_datarootdir}/%{name}/Script-prjdev
+%doc %{_datarootdir}/%{name}/docs
+%{_datarootdir}/%{name}/menu/dev
 
 %files             fas
-%doc %{_datarootdir}/%{name}/Documentation
-%{_datarootdir}/%{name}/UI_CLI/fas
-%{_datarootdir}/%{name}/Script-fas
-%{_sysconfdir}/profile.d/script-tools-fas.sh
+%doc %{_datarootdir}/%{name}/docs
+%{_datarootdir}/%{name}/menu/fas
+#%{_sysconfdir}/profile.d/script-tools-fas.sh
 
 %files              sysadmin
-%doc %{_datarootdir}/%{name}/Documentation
-%{_datarootdir}/%{name}/UI_CLI/sa
+%doc %{_datarootdir}/%{name}/docs
+%{_datarootdir}/%{name}/menu/sa
 
 %changelog
+* Sun Oct 27 2013 - (sea) - erat.simon@gmail.com - 0.9.0-0
+- Initial build after extracting TUI
+
